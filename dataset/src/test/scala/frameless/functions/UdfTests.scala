@@ -184,7 +184,7 @@ class UdfTests extends TypedDatasetSuite {
     check(forAll(prop[Int, Int, Int, Int, Int] _))
   }
 
-  test("struct of arrays explode and star should resolve with udf") {
+  test("explode struct of arrays then udf") {
 
     val dataset = TypedDataset.create(Seq(
       X2(1, Seq(X2(1, "a"),X2(2, "b"),X2(5, "c"),X2(6, "d"))),
@@ -202,9 +202,33 @@ class UdfTests extends TypedDatasetSuite {
       Seq(TypedEncoder[X2[Int, String]].fromCatalyst(starter)), // b doesn't resolve
       TypedEncoder[X2[Int, String]])
 
-//    dataset.dataset.select(expr("*"), sexplode(new Column(inc)).as("struct")).select(expr("struct.*")).show
     dataset.dataset.select(expr("*"), sexplode(new Column("b")).as("struct")).
        select(new Column(inc).as("struct")).
+      select(expr("struct.*")).show
+  }
+
+  test("struct of arrays explode and star should resolve with udf") {
+
+    val dataset = TypedDataset.create(Seq(
+      X1(X2(1, Seq(X2(1, "a"), X2(2, "b"), X2(5, "c"), X2(6, "d")))),
+      X1(X2(2, Seq(X2(7, "a"), X2(8, "b"), X2(9, "c"), X2(10, "d")))),
+      X1(X2(3, Seq(X2(11, "a"), X2(12, "b"), X2(13, "c"), X2(14, "d"))))
+    ))
+    import org.apache.spark.sql.functions.{expr, explode => sexplode}
+    import org.apache.spark.sql.Column
+
+    val starter = UnresolvedAttribute("a")
+
+    type OUT = Seq[X2[Int, String]]
+    type IN = X2[Int, OUT]
+
+    val flatten = FramelessUdf[IN, OUT](
+      (x: IN) => x.b,
+      encoders = List(TypedEncoder[IN]),
+      Seq(TypedEncoder[IN].fromCatalyst(starter)), // b doesn't resolve
+      TypedEncoder[OUT])
+
+    dataset.dataset.select(expr("*"), sexplode(new Column(flatten)).as("struct")).
       select(expr("struct.*")).show
   }
 }
