@@ -273,7 +273,10 @@ lazy val datasetSettings =
         mc("org.apache.spark.sql.reflection.package$ScalaSubtypeLock$"),
         mc("frameless.MapGroups"),
         mc(f"frameless.MapGroups$$"),
-        dmm("frameless.functions.package.litAggr")
+        dmm("frameless.functions.package.litAggr"),
+        dmm("org.apache.spark.sql.FramelessInternals.column"),
+        dmm("frameless.TypedEncoder.collectionEncoder"),
+        dmm("frameless.TypedEncoder.setEncoder")
       )
     },
     coverageExcludedPackages := "frameless.reflection",

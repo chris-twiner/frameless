@@ -2,7 +2,11 @@ package frameless
 package functions
 
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{Expression, LeafExpression, NonSQLExpression}
+import org.apache.spark.sql.catalyst.expressions.{
+  Expression,
+  LeafExpression,
+  NonSQLExpression
+}
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import Block._
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
@@ -67,8 +71,17 @@ trait Udf {
     ) => TypedColumn[T, R] = {
     case us =>
       val scalaUdf =
-        FramelessUdf(f, us.toList[UntypedExpression[T]], TypedEncoder[R],
-          s => f(s.head.asInstanceOf[A1], s(1).asInstanceOf[A2], s(1).asInstanceOf[A3]))
+        FramelessUdf(
+          f,
+          us.toList[UntypedExpression[T]],
+          TypedEncoder[R],
+          s =>
+            f(
+              s.head.asInstanceOf[A1],
+              s(1).asInstanceOf[A2],
+              s(2).asInstanceOf[A3]
+            )
+        )
       new TypedColumn[T, R](scalaUdf)
   }
 
@@ -81,8 +94,18 @@ trait Udf {
   def udf[T, A1, A2, A3, A4, R: TypedEncoder](f: (A1, A2, A3, A4) => R): (TypedColumn[T, A1], TypedColumn[T, A2], TypedColumn[T, A3], TypedColumn[T, A4]) => TypedColumn[T, R] = {
     case us =>
       val scalaUdf =
-        FramelessUdf(f, us.toList[UntypedExpression[T]], TypedEncoder[R],
-          s => f(s.head.asInstanceOf[A1], s(1).asInstanceOf[A2], s(1).asInstanceOf[A3], s(1).asInstanceOf[A4]))
+        FramelessUdf(
+          f,
+          us.toList[UntypedExpression[T]],
+          TypedEncoder[R],
+          s =>
+            f(
+              s.head.asInstanceOf[A1],
+              s(1).asInstanceOf[A2],
+              s(2).asInstanceOf[A3],
+              s(3).asInstanceOf[A4]
+            )
+        )
       new TypedColumn[T, R](scalaUdf)
   }
 
@@ -95,8 +118,19 @@ trait Udf {
   def udf[T, A1, A2, A3, A4, A5, R: TypedEncoder](f: (A1, A2, A3, A4, A5) => R): (TypedColumn[T, A1], TypedColumn[T, A2], TypedColumn[T, A3], TypedColumn[T, A4], TypedColumn[T, A5]) => TypedColumn[T, R] = {
     case us =>
       val scalaUdf =
-        FramelessUdf(f, us.toList[UntypedExpression[T]], TypedEncoder[R],
-          s => f(s.head.asInstanceOf[A1], s(1).asInstanceOf[A2], s(1).asInstanceOf[A3], s(1).asInstanceOf[A4], s(1).asInstanceOf[A5]))
+        FramelessUdf(
+          f,
+          us.toList[UntypedExpression[T]],
+          TypedEncoder[R],
+          s =>
+            f(
+              s.head.asInstanceOf[A1],
+              s(1).asInstanceOf[A2],
+              s(2).asInstanceOf[A3],
+              s(3).asInstanceOf[A4],
+              s(4).asInstanceOf[A5]
+            )
+        )
       new TypedColumn[T, R](scalaUdf)
   }
 }
@@ -119,7 +153,8 @@ case class FramelessUdf[T, R](
 
   override def toString: String = s"FramelessUdf(${children.mkString(", ")})"
 
-  lazy val typedEnc = TypedExpressionEncoder[R](rencoder).asInstanceOf[ExpressionEncoder[R]]
+  lazy val typedEnc =
+    TypedExpressionEncoder[R](rencoder).asInstanceOf[ExpressionEncoder[R]]
 
   def eval(input: InternalRow): Any = {
     val jvmTypes = children.map(_.eval(input))
@@ -130,11 +165,10 @@ case class FramelessUdf[T, R](
     val retval =
       if (returnCatalyst == null)
         null
+      else if (typedEnc.isSerializedAsStructForTopLevel)
+        returnCatalyst
       else
-        if (typedEnc.isSerializedAsStructForTopLevel)
-          returnCatalyst
-        else
-          returnCatalyst.get(0, dataType)
+        returnCatalyst.get(0, dataType)
 
     retval
   }
