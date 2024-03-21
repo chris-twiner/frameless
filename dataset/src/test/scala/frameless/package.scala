@@ -51,9 +51,9 @@ package object frameless {
   def seqGen[A: Arbitrary]: Gen[scala.collection.Seq[A]] = arbSeq[A].arbitrary
 
   implicit def arbList[A](
-                          implicit
-                          A: Arbitrary[A]
-                        ): Arbitrary[List[A]] =
+      implicit
+      A: Arbitrary[A]
+    ): Arbitrary[List[A]] =
     Arbitrary(Gen.listOf(A.arbitrary).map(_.toList))
 
   def listGen[A: Arbitrary]: Gen[List[A]] = arbList[A].arbitrary

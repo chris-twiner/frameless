@@ -11,9 +11,9 @@ class UdfTests extends TypedDatasetSuite {
   test("one argument udf") {
     evalCodeGens {
       def prop[A: TypedEncoder, B: TypedEncoder](
-                                                  data: Vector[X1[A]],
-                                                  f1: A => B
-                                                ): Prop = {
+          data: Vector[X1[A]],
+          f1: A => B
+        ): Prop = {
         val dataset: TypedDataset[X1[A]] = TypedDataset.create(data)
         val u1 = udf[X1[A], A, B](f1)
         val u2 = dataset.makeUDF(f1)
@@ -58,7 +58,9 @@ class UdfTests extends TypedDatasetSuite {
         prop(Vector(X1(a)), f)
 
       check(
-        forAll(prop2[Int, Option[Int]](x => if (x % 2 == 0) Some(x) else None) _)
+        forAll(
+          prop2[Int, Option[Int]](x => if (x % 2 == 0) Some(x) else None) _
+        )
       )
       check(forAll(prop2[Option[Int], Int](x => x getOrElse 0) _))
     }
@@ -67,11 +69,11 @@ class UdfTests extends TypedDatasetSuite {
   test("multiple one argument udf") {
     evalCodeGens {
       def prop[A: TypedEncoder, B: TypedEncoder, C: TypedEncoder](
-                                                                   data: Vector[X3[A, B, C]],
-                                                                   f1: A => A,
-                                                                   f2: B => B,
-                                                                   f3: C => C
-                                                                 ): Prop = {
+          data: Vector[X3[A, B, C]],
+          f1: A => A,
+          f2: B => B,
+          f3: C => C
+        ): Prop = {
         val dataset = TypedDataset.create(data)
         val u11 = udf[X3[A, B, C], A, A](f1)
         val u21 = udf[X3[A, B, C], B, B](f2)
@@ -102,9 +104,9 @@ class UdfTests extends TypedDatasetSuite {
   test("two argument udf") {
     evalCodeGens {
       def prop[A: TypedEncoder, B: TypedEncoder, C: TypedEncoder](
-                                                                   data: Vector[X3[A, B, C]],
-                                                                   f1: (A, B) => C
-                                                                 ): Prop = {
+          data: Vector[X3[A, B, C]],
+          f1: (A, B) => C
+        ): Prop = {
         val dataset = TypedDataset.create(data)
         val u1 = udf[X3[A, B, C], A, B, C](f1)
         val u2 = dataset.makeUDF(f1)
@@ -126,10 +128,10 @@ class UdfTests extends TypedDatasetSuite {
   test("multiple two argument udf") {
     evalCodeGens {
       def prop[A: TypedEncoder, B: TypedEncoder, C: TypedEncoder](
-                                                                   data: Vector[X3[A, B, C]],
-                                                                   f1: (A, B) => C,
-                                                                   f2: (B, C) => A
-                                                                 ): Prop = {
+          data: Vector[X3[A, B, C]],
+          f1: (A, B) => C,
+          f2: (B, C) => A
+        ): Prop = {
         val dataset = TypedDataset.create(data)
         val u11 = udf[X3[A, B, C], A, B, C](f1)
         val u12 = dataset.makeUDF(f1)
@@ -158,9 +160,9 @@ class UdfTests extends TypedDatasetSuite {
     evalCodeGens {
       forceInterpreted {
         def prop[A: TypedEncoder, B: TypedEncoder, C: TypedEncoder](
-                                                                     data: Vector[X3[A, B, C]],
-                                                                     f: (A, B, C) => C
-                                                                   ): Prop = {
+            data: Vector[X3[A, B, C]],
+            f: (A, B, C) => C
+          ): Prop = {
           val dataset = TypedDataset.create(data)
           val u1 = udf[X3[A, B, C], A, B, C, C](f)
           val u2 = dataset.makeUDF(f)
@@ -186,13 +188,13 @@ class UdfTests extends TypedDatasetSuite {
     evalCodeGens {
       forceInterpreted {
         def prop[
-          A: TypedEncoder,
-          B: TypedEncoder,
-          C: TypedEncoder,
-          D: TypedEncoder
-        ](data: Vector[X4[A, B, C, D]],
-          f: (A, B, C, D) => C
-         ): Prop = {
+            A: TypedEncoder,
+            B: TypedEncoder,
+            C: TypedEncoder,
+            D: TypedEncoder
+          ](data: Vector[X4[A, B, C, D]],
+            f: (A, B, C, D) => C
+          ): Prop = {
           val dataset = TypedDataset.create(data)
           val u1 = udf[X4[A, B, C, D], A, B, C, D, C](f)
           val u2 = dataset.makeUDF(f)
@@ -202,8 +204,10 @@ class UdfTests extends TypedDatasetSuite {
           val C = dataset.col[C]('c)
           val D = dataset.col[D]('d)
 
-          val dataset21 = dataset.select(u1(A, B, C, D)).collect().run().toVector
-          val dataset22 = dataset.select(u2(A, B, C, D)).collect().run().toVector
+          val dataset21 =
+            dataset.select(u1(A, B, C, D)).collect().run().toVector
+          val dataset22 =
+            dataset.select(u2(A, B, C, D)).collect().run().toVector
           val d = data.map(x => f(x.a, x.b, x.c, x.d))
 
           (dataset21 ?= d) && (dataset22 ?= d)
@@ -222,14 +226,14 @@ class UdfTests extends TypedDatasetSuite {
     evalCodeGens {
       forceInterpreted {
         def prop[
-          A: TypedEncoder,
-          B: TypedEncoder,
-          C: TypedEncoder,
-          D: TypedEncoder,
-          E: TypedEncoder
-        ](data: Vector[X5[A, B, C, D, E]],
-          f: (A, B, C, D, E) => C
-         ): Prop = {
+            A: TypedEncoder,
+            B: TypedEncoder,
+            C: TypedEncoder,
+            D: TypedEncoder,
+            E: TypedEncoder
+          ](data: Vector[X5[A, B, C, D, E]],
+            f: (A, B, C, D, E) => C
+          ): Prop = {
           val dataset = TypedDataset.create(data)
           val u1 = udf[X5[A, B, C, D, E], A, B, C, D, E, C](f)
           val u2 = dataset.makeUDF(f)
