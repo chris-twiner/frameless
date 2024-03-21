@@ -1,10 +1,10 @@
 import java.time.format.DateTimeFormatter
 import java.time.{ LocalDateTime => JavaLocalDateTime }
-
 import org.apache.spark.sql.catalyst.expressions.CodegenObjectFactoryMode
 import org.apache.spark.sql.internal.SQLConf
+import org.scalacheck.{ Arbitrary, Cogen, Gen }
 
-import org.scalacheck.{ Arbitrary, Gen }
+import scala.collection.immutable.{ ListSet, TreeSet }
 
 package object frameless {
 
@@ -49,6 +49,46 @@ package object frameless {
     Arbitrary(Gen.listOf(A.arbitrary).map(_.toVector.toSeq))
 
   def seqGen[A: Arbitrary]: Gen[scala.collection.Seq[A]] = arbSeq[A].arbitrary
+
+  implicit def arbList[A](
+                          implicit
+                          A: Arbitrary[A]
+                        ): Arbitrary[List[A]] =
+    Arbitrary(Gen.listOf(A.arbitrary).map(_.toList))
+
+  def listGen[A: Arbitrary]: Gen[List[A]] = arbList[A].arbitrary
+
+  implicit def arbSet[A](
+      implicit
+      A: Arbitrary[A]
+    ): Arbitrary[Set[A]] =
+    Arbitrary(Gen.listOf(A.arbitrary).map(Set.newBuilder.++=(_).result()))
+
+  def setGen[A: Arbitrary]: Gen[Set[A]] = arbSet[A].arbitrary
+
+  implicit def cogenListSet[A: Cogen: Ordering]: Cogen[ListSet[A]] =
+    Cogen.it(_.toVector.sorted.iterator)
+
+  implicit def arbListSet[A](
+      implicit
+      A: Arbitrary[A]
+    ): Arbitrary[ListSet[A]] =
+    Arbitrary(Gen.listOf(A.arbitrary).map(ListSet.newBuilder.++=(_).result()))
+
+  def listSetGen[A: Arbitrary]: Gen[ListSet[A]] = arbListSet[A].arbitrary
+
+  implicit def cogenTreeSet[A: Cogen: Ordering]: Cogen[TreeSet[A]] =
+    Cogen.it(_.toVector.sorted.iterator)
+
+  implicit def arbTreeSet[A](
+      implicit
+      A: Arbitrary[A],
+      o: Ordering[A]
+    ): Arbitrary[TreeSet[A]] =
+    Arbitrary(Gen.listOf(A.arbitrary).map(TreeSet.newBuilder.++=(_).result()))
+
+  def treeSetGen[A: Arbitrary: Ordering]: Gen[TreeSet[A]] =
+    arbTreeSet[A].arbitrary
 
   implicit val arbUdtEncodedClass: Arbitrary[UdtEncodedClass] = Arbitrary {
     for {
