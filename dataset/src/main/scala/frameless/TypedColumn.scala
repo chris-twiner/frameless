@@ -2,28 +2,23 @@ package frameless
 
 import frameless.functions.{ litAggr, lit => flit }
 import frameless.syntax._
-
-import org.apache.spark.sql.catalyst.expressions.{
-  Expression,
-  Literal
-} // 787 - Spark 4 source code compat
+import org.apache.spark.sql.catalyst.expressions.{ Expression, Literal }
 import org.apache.spark.sql.types.DecimalType
 import org.apache.spark.sql.Column
-
 import shapeless._
 import shapeless.ops.record.Selector
 
 import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
-
 import com.sparkutils.shim.expressions.{
+  Coalesce1 => Coalesce,
   EqualNullSafe2 => EqualNullSafe,
   EqualTo2 => EqualTo,
-  Not1 => Not,
-  IsNull1 => IsNull,
   IsNotNull1 => IsNotNull,
-  Coalesce1 => Coalesce
-} // 787 - Spark 4 source code compat
+  IsNull1 => IsNull,
+  Not1 => Not
+}
+import org.apache.spark.sql.ShimUtils.column
 
 import scala.language.experimental.macros
 
@@ -141,7 +136,7 @@ abstract class AbstractTypedColumn[T, U](
     ): Mapper[X] = new Mapper[X] {}
 
   /** Fall back to an untyped Column */
-  def untyped: Column = new Column(expr)
+  def untyped: Column = column(expr)
 
   private def equalsTo[TT, W](
       other: ThisType[TT, U]
@@ -154,7 +149,7 @@ abstract class AbstractTypedColumn[T, U](
 
   /** Creates a typed column of either TypedColumn or TypedAggregate from an expression. */
   protected def typed[W, U1: TypedEncoder](e: Expression): ThisType[W, U1] =
-    typed(new Column(e))
+    typed(column(e))
 
   /** Creates a typed column of either TypedColumn or TypedAggregate. */
   def typed[W, U1: TypedEncoder](c: Column): ThisType[W, U1]
@@ -1284,7 +1279,7 @@ sealed class SortedTypedColumn[T, U](
     this(FramelessInternals.expr(column))
   }
 
-  def untyped: Column = new Column(expr)
+  def untyped: Column = column(expr)
 }
 
 object SortedTypedColumn {

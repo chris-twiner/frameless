@@ -36,7 +36,7 @@ object FramelessInternals {
       }
   }
 
-  def expr(column: Column): Expression = column.expr
+  def expr(column: Column): Expression = ShimUtils.expression(column)
 
   def logicalPlan(ds: Dataset[_]): LogicalPlan = shimUtils.logicalPlan(ds)
 

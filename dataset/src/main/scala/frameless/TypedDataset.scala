@@ -12,6 +12,7 @@ import org.apache.spark.sql.catalyst.expressions.{
 }
 import org.apache.spark.sql.catalyst.plans.logical.{ Join, JoinHint }
 import org.apache.spark.sql.catalyst.plans.Inner
+import org.apache.spark.sql.ShimUtils.column
 import org.apache.spark.sql.types.StructType
 import shapeless._
 import shapeless.labelled.FieldType
@@ -130,7 +131,7 @@ class TypedDataset[T] protected[frameless] (
       val underlyingColumns = columns.toList[UntypedExpression[T]]
       val cols: Seq[Column] = for {
         (c, i) <- columns.toList[UntypedExpression[T]].zipWithIndex
-      } yield new Column(c.expr).as(s"_${i + 1}")
+      } yield column(c.expr).as(s"_${i + 1}")
 
       // Workaround to SPARK-20346. One alternative is to allow the result to be Vector(null) for empty DataFrames.
       // Another one would be to return an Option.
@@ -766,7 +767,7 @@ class TypedDataset[T] protected[frameless] (
       e: TypedEncoder[(T, U)]
     ): TypedDataset[(T, U)] =
     new TypedDataset(
-      self.dataset.joinWith(other.dataset, new Column(Literal(true)), "cross")
+      self.dataset.joinWith(other.dataset, column(Literal(true)), "cross")
     )
 
   /**
@@ -1217,7 +1218,7 @@ class TypedDataset[T] protected[frameless] (
       val base = dataset
         .toDF()
         .select(
-          columns.toList[UntypedExpression[T]].map(c => new Column(c.expr)): _*
+          columns.toList[UntypedExpression[T]].map(c => column(c.expr)): _*
         )
       val selected = base.as[Out](TypedExpressionEncoder[Out])
 

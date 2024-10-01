@@ -1,5 +1,6 @@
 val sparkVersion =
-  "3.5.1" // "4.0.0-SNAPSHOT" must have the apache_snaps configured
+//  "3.5.1" //
+ "4.0.0-preview2" // must have the apache_snaps configured
 val spark34Version = "3.4.2"
 val spark33Version = "3.3.4"
 val catsCoreVersion = "2.10.0"
@@ -12,7 +13,7 @@ val scalacheck = "1.17.0"
 val scalacheckEffect = "1.0.4"
 val refinedVersion = "0.11.1"
 val nakedFSVersion = "0.1.0"
-val shimVersion = "0.0.1-RC4"
+val shimVersion = "0.0.1-RC5-SNAPSHOT"
 
 val Scala212 = "2.12.19"
 val Scala213 = "2.13.13"
@@ -41,7 +42,7 @@ csrConfiguration := csrConfiguration.value
 ThisBuild / tlBaseVersion := "0.16"
 
 ThisBuild / crossScalaVersions := Seq(Scala213, Scala212)
-ThisBuild / scalaVersion := Scala212
+ThisBuild / scalaVersion := Scala213
 
 lazy val root = project
   .in(file("."))
@@ -113,7 +114,7 @@ lazy val dataset = project
     Test / unmanagedSourceDirectories += baseDirectory.value / "src" / "test" / "spark-3.3+"
   )
   .settings(
-    libraryDependencies += "com.sparkutils" %% "shim_runtime_3.5.0.oss_3.5" % shimVersion changing () // 4.0.0.oss_4.0 for 4 snapshot
+    libraryDependencies += "com.sparkutils" %% "shim_runtime_4.0.0.oss_4.0" % shimVersion changing () // 4.0.0.oss_4.0 for 4 snapshot
   )
   .settings(datasetSettings)
   .settings(sparkDependencies(sparkVersion))
@@ -377,6 +378,10 @@ lazy val framelessSettings = Seq(
    * [error] 	    +- org.scala-lang:scala-compiler:2.12.16              (depends on 1.0.6)
    */
   libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always,
+  /**
+   * Spark 4 preview uses a "-5" build
+   */
+  libraryDependencySchemes += "com.github.luben" % "zstd-jni" % VersionScheme.Always,
   // allow testing on different runtimes, but don't publish / run docs
   Test / publishArtifact := true,
   Test / packageDoc / publishArtifact := false

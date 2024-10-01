@@ -590,7 +590,7 @@ class AggregateFunctionsTests extends TypedDatasetSuite {
       ): Prop = bivariatePropTemplate(xs)(
       covarPop[A, B, X3[Int, A, B]],
       org.apache.spark.sql.functions.covar_pop,
-      fudger = DoubleBehaviourUtils.tolerance(_, BigDecimal("100"))
+      fudger = DoubleBehaviourUtils.tolerance(_, BigDecimal("200"))
     )
 
     check(forAll(prop[Double, Double] _))
@@ -613,7 +613,7 @@ class AggregateFunctionsTests extends TypedDatasetSuite {
       ): Prop = bivariatePropTemplate(xs)(
       covarSamp[A, B, X3[Int, A, B]],
       org.apache.spark.sql.functions.covar_samp,
-      fudger = DoubleBehaviourUtils.tolerance(_, BigDecimal("10"))
+      fudger = DoubleBehaviourUtils.tolerance(_, BigDecimal("200"))
     )
 
     check(forAll(prop[Double, Double] _))

@@ -15,6 +15,7 @@ import shapeless.ops.hlist.{
 }
 import com.sparkutils.shim.expressions.{ MapGroups4 => MapGroups }
 import frameless.FramelessInternals
+import org.apache.spark.sql.ShimUtils.column
 
 class GroupedByManyOps[T, TK <: HList, K <: HList, KT](
     self: TypedDataset[T],
@@ -216,7 +217,7 @@ private[ops] abstract class AggregatingOps[T, TK <: HList, K <: HList, KT](
       i7: TypedEncoder[Out1],
       i8: ToTraversable.Aux[TC, List, UntypedExpression[T]]
     ): TypedDataset[Out1] = {
-    def expr(c: UntypedExpression[T]): Column = new Column(c.expr)
+    def expr(c: UntypedExpression[T]): Column = column(c.expr)
 
     val groupByExprs = groupedBy.toList[UntypedExpression[T]].map(expr)
     val aggregates =
@@ -345,7 +346,7 @@ final case class Pivot[T, GroupedColumns <: HList, PivotType, Values <: HList](
         }
 
       val aggCols: Seq[Column] = mapAny(aggrColumns)(x =>
-        new Column(x.asInstanceOf[TypedAggregate[_, _]].expr)
+        column(x.asInstanceOf[TypedAggregate[_, _]].expr)
       )
       val tmp = ds.dataset
         .toDF()
