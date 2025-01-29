@@ -67,7 +67,7 @@ object FramelessInternals {
       plan: LogicalPlan,
       encoder: Encoder[T]
     ): Dataset[T] =
-    new Dataset(sqlContext, plan, encoder)
+    new classic.Dataset(sqlContext, plan, encoder)
 
   def ofRows(sparkSession: SparkSession, logicalPlan: LogicalPlan): DataFrame =
     shimUtils.ofRows(sparkSession, logicalPlan)

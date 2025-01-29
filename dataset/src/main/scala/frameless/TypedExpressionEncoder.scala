@@ -1,6 +1,7 @@
 package frameless
 
 import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoder
 import org.apache.spark.sql.types.StructType
 
 object TypedExpressionEncoder {
@@ -18,15 +19,6 @@ object TypedExpressionEncoder {
   def apply[T](
       implicit
       encoder: TypedEncoder[T]
-    ): Encoder[T] = {
-    import encoder._
-    org.apache.spark.sql.ShimUtils.expressionEncoder[T](
-      jvmRepr,
-      nullable,
-      toCatalyst,
-      catalystRepr,
-      fromCatalyst
-    )
-  }
+    ): AgnosticEncoder[T] = encoder.agnosticEncoder
 
 }

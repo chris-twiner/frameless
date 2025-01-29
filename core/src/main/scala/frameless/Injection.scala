@@ -16,4 +16,5 @@ object Injection {
     def apply(a: A): B = f(a)
     def invert(b: B): A = g(b)
   }
+
 }

@@ -1,14 +1,11 @@
 package frameless
 package functions
 
-import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{
-  Expression,
-  LeafExpression,
-  NonSQLExpression
-}
+import org.apache.spark.sql.catalyst.{InternalRow, SerializerBuildHelper}
+import org.apache.spark.sql.catalyst.expressions.{Expression, LeafExpression, NonSQLExpression}
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import Block._
+import org.apache.spark.sql.catalyst.CatalystTypeConverters.{createToCatalystConverter, isPrimitive}
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.types.DataType
 import shapeless.syntax.std.tuple._
@@ -155,7 +152,7 @@ case class FramelessUdf[T, R](
   override def toString: String = s"FramelessUdf(${children.mkString(", ")})"
 
   lazy val typedEnc =
-    TypedExpressionEncoder[R](rencoder).asInstanceOf[ExpressionEncoder[R]]
+    ExpressionEncoder(TypedExpressionEncoder[R](rencoder))
 
   lazy val isSerializedAsStructForTopLevel =
     typedEnc.isSerializedAsStructForTopLevel
@@ -177,9 +174,23 @@ case class FramelessUdf[T, R](
     retval
   }
 
+  private def catalystConverter: Any => Any = {
+    val toRow = typedEnc.createSerializer().asInstanceOf[Any => Any]
+    if (isSerializedAsStructForTopLevel) {
+      value: Any =>
+        if (value == null) null else toRow(value).asInstanceOf[InternalRow]
+    } else {
+      value: Any =>
+        if (value == null) null else toRow(value).asInstanceOf[InternalRow].get(0, dataType)
+    }
+  }
+
   def dataType: DataType = rencoder.catalystRepr
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
+    val retConverter = catalystConverter
+    val retConverterTerm = ctx.addReferenceObj("retConverter", retConverter, classOf[Any => Any].getName)
+
     ctx.references += this
 
     // save reference to `function` field from `FramelessUdf` to call it later
@@ -211,9 +222,21 @@ case class FramelessUdf[T, R](
     val internalTpe = CodeGenerator.boxedType(rencoder.jvmRepr)
     val internalTerm =
       ctx.addMutableState(internalTpe, ctx.freshName("internal"))
-    val internalNullTerm =
-      ctx.addMutableState("boolean", ctx.freshName("internalNull"))
-    // CTw - can't inject the term, may have to duplicate old code for parity
+
+    val actualFuncCall = s"($internalTpe)$funcTerm.apply(${funcArguments.mkString(", ")})"
+
+    // invocation logic taken from Spark4 ScalaUDF
+    val funcInvocation =
+      if (rencoder.agnosticEncoder.isPrimitive
+        // If the output is nullable, the returned value must be unwrapped from the Option
+        && !nullable) {
+        s"$internalTerm = $actualFuncCall;"
+      } else {
+        s"""$internalTerm = ($internalTpe)$retConverterTerm.apply(
+          $funcTerm.apply(${funcArguments.mkString(", ")})
+        );"""
+      }
+    /*// CTw - can't inject the term, may have to duplicate old code for parity
     val internalExpr = Spark2_4_LambdaVariable(
       internalTerm,
       internalNullTerm,
@@ -221,20 +244,19 @@ case class FramelessUdf[T, R](
       true
     )
 
-    val resultEval = rencoder.toCatalyst(internalExpr).genCode(ctx)
-
+    val resultEval = typedEnc.createSerializer().
+      .toCatalyst(internalExpr).genCode(ctx)
+*/
     ev.copy(
       code = code"""
       ${argsCode.mkString("\n")}
+      $funcInvocation
 
-      $internalTerm =
-        ($internalTpe)$funcTerm.apply(${funcArguments.mkString(", ")});
-      $internalNullTerm = $internalTerm == null;
-
-      ${resultEval.code}
-      """,
-      value = resultEval.value,
-      isNull = resultEval.isNull
+      boolean ${ev.isNull} = $internalTerm == null;
+      if (!${ev.isNull}) {
+        ${ev.value} = $internalTerm;
+      }
+      """
     )
   }
 
@@ -291,7 +313,7 @@ object FramelessUdf {
     ): FramelessUdf[T, R] = FramelessUdf(
     function = function,
     encoders = cols.map(_.uencoder).toList,
-    children = cols.map(x => x.uencoder.fromCatalyst(x.expr)).toList,
+    children = cols.map(_.expr).toList,
     rencoder = rencoder,
     evalFunction = evalFunction
   )

@@ -1,17 +1,11 @@
 package frameless
 
-import com.sparkutils.shim.expressions.{
-  CreateNamedStruct1 => CreateNamedStruct,
-  GetStructField3 => GetStructField,
-  UnwrapOption2 => UnwrapOption,
-  WrapOption2 => WrapOption
-}
-import com.sparkutils.shim.{ deriveUnitLiteral, ifIsNull }
-import org.apache.spark.sql.catalyst.expressions.{ Expression, Literal }
-import org.apache.spark.sql.shim.{
-  Invoke5 => Invoke,
-  NewInstance4 => NewInstance
-}
+import com.sparkutils.shim.expressions.{CreateNamedStruct1 => CreateNamedStruct, GetStructField3 => GetStructField, UnwrapOption2 => UnwrapOption, WrapOption2 => WrapOption}
+import com.sparkutils.shim.{deriveUnitLiteral, ifIsNull}
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoder
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, ProductEncoder}
+import org.apache.spark.sql.catalyst.expressions.{Expression, Literal}
+import org.apache.spark.sql.shim.{Invoke5 => Invoke, NewInstance4 => NewInstance}
 import org.apache.spark.sql.types._
 import shapeless._
 import shapeless.labelled.FieldType
@@ -37,7 +31,7 @@ object RecordEncoderFields {
   implicit def deriveRecordLast[K <: Symbol, H](
       implicit
       key: Witness.Aux[K],
-      head: RecordFieldEncoder[H]
+      head: TypedEncoder[H]
     ): RecordEncoderFields[FieldType[K, H] :: HNil] =
     new RecordEncoderFields[FieldType[K, H] :: HNil] {
       def value: List[RecordEncoderField] = fieldEncoder[K, H] :: Nil
@@ -46,7 +40,7 @@ object RecordEncoderFields {
   implicit def deriveRecordCons[K <: Symbol, H, T <: HList](
       implicit
       key: Witness.Aux[K],
-      head: RecordFieldEncoder[H],
+      head: TypedEncoder[H],
       tail: RecordEncoderFields[T]
     ): RecordEncoderFields[FieldType[K, H] :: T] =
     new RecordEncoderFields[FieldType[K, H] :: T] {
@@ -60,8 +54,8 @@ object RecordEncoderFields {
   private def fieldEncoder[K <: Symbol, H](
       implicit
       key: Witness.Aux[K],
-      e: RecordFieldEncoder[H]
-    ): RecordEncoderField = RecordEncoderField(0, key.value.name, e.encoder)
+      e: TypedEncoder[H]
+    ): RecordEncoderField = RecordEncoderField(0, key.value.name, e)
 }
 
 /**
@@ -154,7 +148,19 @@ class RecordEncoder[F, G <: HList, H <: HList](
     newInstanceExprs: Lazy[NewInstanceExprs[G]],
     classTag: ClassTag[F])
     extends TypedEncoder[F] {
-  def nullable: Boolean = false
+
+  override def agnosticEncoder: AgnosticEncoder[F] =
+      ProductEncoder[F](
+        classTag,
+        fields.value.value.map(f => EncoderField(
+          f.name,
+          f.encoder.agnosticEncoder,
+          f.encoder.nullable,
+          Metadata.empty) ),
+        None)
+
+  override def jvmRepr: DataType = FramelessInternals.objectTypeFor[F]
+  /*def nullable: Boolean = false
 
   def jvmRepr: DataType = FramelessInternals.objectTypeFor[F]
 
@@ -201,17 +207,11 @@ class RecordEncoder[F, G <: HList, H <: HList](
       NewInstance(classTag.runtimeClass, newArgs, jvmRepr, propagateNull = true)
 
     ifIsNull(jvmRepr, path, newExpr)
-  }
+  }*/
+
 }
 
-final class RecordFieldEncoder[T](
-    val encoder: TypedEncoder[T],
-    private[frameless] val jvmRepr: DataType,
-    private[frameless] val fromCatalyst: Expression => Expression,
-    private[frameless] val toCatalyst: Expression => Expression)
-    extends Serializable
-
-object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
+object RecordFieldEncoder /*extends RecordFieldEncoderLowPriority */{
 
   /**
    * @tparam F the value class
@@ -235,7 +235,9 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i4: IsHCons.Aux[KS, K, HNil],
       i5: TypedEncoder[V],
       i6: ClassTag[F]
-    ): RecordFieldEncoder[Option[F]] = {
+    ): TypedEncoder[Option[F]] = {
+      TypedEncoder.optionEncoder(valueClass)
+    /*
     val fieldName = i4.head(i3()).name
     val innerJvmRepr = ObjectType(i6.runtimeClass)
 
@@ -278,7 +280,7 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       jvmRepr = jvmr,
       fromCatalyst = fromCatalyst,
       toCatalyst = catalyst
-    )
+    ) */
   }
 
   /**
@@ -302,8 +304,17 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i4: IsHCons.Aux[KS, K, HNil],
       i5: TypedEncoder[V],
       i6: ClassTag[F]
-    ): RecordFieldEncoder[F] = {
-    val cls = i6.runtimeClass
+    ): TypedEncoder[F] = new TypedEncoder[F]() {
+    override def agnosticEncoder: AgnosticEncoder[F] = ProductEncoder[F](
+      i6,
+      Seq(EncoderField(
+        i4.head(i3()).name,
+        i5.agnosticEncoder,
+        i5.nullable,
+        Metadata.empty)),
+      None)
+
+    /* { val cls = i6.runtimeClass
     val jvmr = i5.jvmRepr
     val fieldName = i4.head(i3()).name
 
@@ -335,10 +346,10 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       toCatalyst = { expr: Expression =>
         i5.toCatalyst(Invoke(expr, fieldName, jvmr))
       }
-    )
+    )*/
   }
 }
-
+/*
 private[frameless] sealed trait RecordFieldEncoderLowPriority {
 
   implicit def apply[T](
@@ -347,3 +358,4 @@ private[frameless] sealed trait RecordFieldEncoderLowPriority {
     ): RecordFieldEncoder[T] =
     new RecordFieldEncoder[T](e, e.jvmRepr, e.fromCatalyst, e.toCatalyst)
 }
+*/

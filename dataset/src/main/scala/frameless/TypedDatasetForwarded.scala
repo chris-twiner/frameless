@@ -1,8 +1,8 @@
 package frameless
 
 import java.util
-
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.classic.ClassicConversions.castToImpl
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.streaming.DataStreamWriter
 import org.apache.spark.sql.types.StructType

@@ -9,6 +9,7 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference,
 import org.apache.spark.sql.catalyst.plans.logical.{Join, JoinHint}
 import org.apache.spark.sql.catalyst.plans.Inner
 import org.apache.spark.sql.ShimUtils.column
+import org.apache.spark.sql.classic.ClassicConversions.castToImpl
 import org.apache.spark.sql.types.StructType
 import shapeless._
 import shapeless.labelled.FieldType
@@ -756,8 +757,8 @@ class TypedDataset[T] protected[frameless] (
       e: TypedEncoder[(T, U)]
     ): TypedDataset[(T, U)] =
     new TypedDataset(
-      ShimUtils.joinWith(dataset, other.dataset, column(Literal(true)), "cross")(TypedExpressionEncoder[(T, U)])
-      //self.dataset.joinWith(other.dataset, column(Literal(true)), "cross")
+      //ShimUtils.joinWith(dataset, other.dataset, column(Literal(true)), "cross")(TypedExpressionEncoder[(T, U)])
+      self.dataset.joinWith(other.dataset, column(Literal(true)), "cross")
     )
 
   /**
@@ -772,13 +773,13 @@ class TypedDataset[T] protected[frameless] (
       to: TypedEncoder[(T, U)]
     ): TypedDataset[(Option[T], Option[U])] =
     new TypedDataset(
-      ShimUtils.joinWith(dataset, other.dataset, condition.untyped, "full")(TypedExpressionEncoder[(T, U)])
-        .as[(Option[T], Option[U])](TypedExpressionEncoder[(Option[T], Option[U])])
-      /*self.dataset
+      //ShimUtils.joinWith(dataset, other.dataset, condition.untyped, "full")(TypedExpressionEncoder[(T, U)])
+      //  .as[(Option[T], Option[U])](TypedExpressionEncoder[(Option[T], Option[U])])
+      self.dataset
         .joinWith(other.dataset, condition.untyped, "full")
         .as[(Option[T], Option[U])](
           TypedExpressionEncoder[(Option[T], Option[U])]
-        )*/
+        )
     )
 
   /**
@@ -817,11 +818,11 @@ class TypedDataset[T] protected[frameless] (
       to: TypedEncoder[(T, U)]
     ): TypedDataset[(T, Option[U])] =
     new TypedDataset(
-      ShimUtils.joinWith(dataset, other.dataset, condition.untyped, "left_outer")(TypedExpressionEncoder[(T, U)])
-        .as[(T, Option[U])](TypedExpressionEncoder[(T, Option[U])])
-      /*self.dataset
+      //ShimUtils.joinWith(dataset, other.dataset, condition.untyped, "left_outer")(TypedExpressionEncoder[(T, U)])
+      //  .as[(T, Option[U])](TypedExpressionEncoder[(T, Option[U])])
+      self.dataset
         .joinWith(other.dataset, condition.untyped, "left_outer")
-        .as[(T, Option[U])](TypedExpressionEncoder[(T, Option[U])])*/
+        .as[(T, Option[U])](TypedExpressionEncoder[(T, Option[U])])
     )
 
   /**

@@ -1,6 +1,6 @@
 val sparkVersion =
 //  "3.5.1" //
- "4.0.0-preview2" // must have the apache_snaps configured
+ "4.1.0-SNAPSHOT" // must have the apache_snaps configured 4.1.0-SNAPSHOT
 val spark34Version = "3.4.2"
 val spark33Version = "3.3.4"
 val catsCoreVersion = "2.10.0"
@@ -13,7 +13,7 @@ val scalacheck = "1.17.0"
 val scalacheckEffect = "1.0.4"
 val refinedVersion = "0.11.1"
 val nakedFSVersion = "0.1.0"
-val shimVersion = "0.0.1-RC5-SNAPSHOT"
+val shimVersion = "0.0.2-SNAPSHOT"
 
 val Scala212 = "2.12.19"
 val Scala213 = "2.13.13"
