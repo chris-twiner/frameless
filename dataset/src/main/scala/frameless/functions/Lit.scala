@@ -1,7 +1,8 @@
 package frameless.functions
 
-import frameless.TypedEncoder
+import frameless.{TypedEncoder, TypedExpressionEncoder}
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.expressions.{Expression, NonSQLExpression}
 import org.apache.spark.sql.types.DataType
@@ -11,13 +12,15 @@ private[frameless] case class Lit[T](
     nullable: Boolean,
     show: () => String,
     catalystExpr: Expression, // must be a generated Expression from a literal TypedEncoder's toCatalyst function
-    encoder: TypedEncoder[T]
-) extends Expression with NonSQLExpression {
+    toCatalyst: TypedEncoder[T]
+) extends Expression with NonSQLExpression with CatalystConverter[T] with CodegenFallback {
   override def toString: String = s"FramelessLit(${show()})"
 
   lazy val codegen = {
     val ctx = new CodegenContext()
     val eval = genCode(ctx)
+
+    val retConverterTerm = responseConversionTerm(ctx)
 
     val codeBody =
       s"""
@@ -53,11 +56,16 @@ private[frameless] case class Lit[T](
     codegen
   }
 
-  def eval(input: InternalRow): Any = codegen(input)
+  def eval(input: InternalRow): Any = {//codegen(input) {
+
+  val jvm = catalystExpr.eval(input).asInstanceOf[T]
+
+  processResponse(jvm)
+}
   
   def children: Seq[Expression] = Nil
 
-  protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = catalystExpr.genCode(ctx)
+  //protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = catalystExpr.genCode(ctx)
 
   protected def withNewChildrenInternal(newChildren: IndexedSeq[Expression]): Expression = this
 

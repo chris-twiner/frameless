@@ -142,55 +142,26 @@ case class FramelessUdf[T, R](
     function: AnyRef,
     encoders: Seq[TypedEncoder[_]],
     children: Seq[Expression],
-    rencoder: TypedEncoder[R],
+    toCatalyst: TypedEncoder[R],
     evalFunction: Seq[Any] => Any)
     extends Expression
-    with NonSQLExpression {
+    with NonSQLExpression with CatalystConverter[R] {
 
-  override def nullable: Boolean = rencoder.nullable
+  override def nullable: Boolean = toCatalyst.nullable
 
   override def toString: String = s"FramelessUdf(${children.mkString(", ")})"
-
-  lazy val typedEnc =
-    ExpressionEncoder(TypedExpressionEncoder[R](rencoder))
-
-  lazy val isSerializedAsStructForTopLevel =
-    typedEnc.isSerializedAsStructForTopLevel
 
   def eval(input: InternalRow): Any = {
     val jvmTypes = children.map(_.eval(input))
 
     val returnJvm = evalFunction(jvmTypes).asInstanceOf[R]
-
-    val returnCatalyst = typedEnc.createSerializer().apply(returnJvm)
-    val retval =
-      if (returnCatalyst == null)
-        null
-      else if (isSerializedAsStructForTopLevel)
-        returnCatalyst
-      else
-        returnCatalyst.get(0, dataType)
-
-    retval
+    processResponse(returnJvm)
   }
 
-  private def catalystConverter: Any => Any = {
-    val toRow = typedEnc.createSerializer().asInstanceOf[Any => Any]
-    if (isSerializedAsStructForTopLevel) {
-      value: Any =>
-        if (value == null) null else toRow(value).asInstanceOf[InternalRow]
-    } else {
-      value: Any =>
-        if (value == null) null else toRow(value).asInstanceOf[InternalRow].get(0, dataType)
-    }
-  }
-
-  def dataType: DataType = rencoder.catalystRepr
+  def dataType: DataType = toCatalyst.catalystRepr
 
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
-    val retConverter = catalystConverter
-    val retConverterTerm = ctx.addReferenceObj("retConverter", retConverter, classOf[Any => Any].getName)
-
+    val retConverterTerm = responseConversionTerm(ctx)
     ctx.references += this
 
     // save reference to `function` field from `FramelessUdf` to call it later
@@ -219,23 +190,9 @@ case class FramelessUdf[T, R](
       }
       .unzip
 
-    val internalTpe = CodeGenerator.boxedType(rencoder.jvmRepr)
-    val internalTerm =
-      ctx.addMutableState(internalTpe, ctx.freshName("internal"))
+    val (funcInvocation, internalTerm) =
+      responseInvocation(ctx, s"$funcTerm.apply(${funcArguments.mkString(", ")})", retConverterTerm)
 
-    val actualFuncCall = s"($internalTpe)$funcTerm.apply(${funcArguments.mkString(", ")})"
-
-    // invocation logic taken from Spark4 ScalaUDF
-    val funcInvocation =
-      if (rencoder.agnosticEncoder.isPrimitive
-        // If the output is nullable, the returned value must be unwrapped from the Option
-        && !nullable) {
-        s"$internalTerm = $actualFuncCall;"
-      } else {
-        s"""$internalTerm = ($internalTpe)$retConverterTerm.apply(
-          $funcTerm.apply(${funcArguments.mkString(", ")})
-        );"""
-      }
     /*// CTw - can't inject the term, may have to duplicate old code for parity
     val internalExpr = Spark2_4_LambdaVariable(
       internalTerm,
@@ -314,7 +271,7 @@ object FramelessUdf {
     function = function,
     encoders = cols.map(_.uencoder).toList,
     children = cols.map(_.expr).toList,
-    rencoder = rencoder,
+    toCatalyst = rencoder,
     evalFunction = evalFunction
   )
 }
