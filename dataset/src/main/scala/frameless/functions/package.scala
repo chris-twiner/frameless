@@ -59,7 +59,8 @@ package object functions extends Udf with UnaryFunctions {
           dataType = encoder.catalystRepr,
           nullable = encoder.nullable,
           show = () => value.toString,
-          catalystExpr = encoder.toCatalyst(expr)
+          catalystExpr = expr,
+          encoder = encoder
         )
       )
     }
@@ -91,8 +92,10 @@ package object functions extends Udf with UnaryFunctions {
       i5: IsHCons.Aux[KS, K, HNil],
       i6: IsHCons.Aux[VS, V, HNil],
       i7: TypedEncoder[V],
-      i8: ClassTag[A]
-    ): TypedColumn[T, A] = {
+      i8: ClassTag[A],
+      i9: Accessors[A,G],
+      i10: ClassTag[V]
+  ): TypedColumn[T, A] = {
     val expr = {
       val field: H = i1(i0.to(value))
       val v: V = i6.head(i4(field))
@@ -108,7 +111,8 @@ package object functions extends Udf with UnaryFunctions {
         dataType = i7.catalystRepr,
         nullable = i7.nullable,
         show = () => value.toString,
-        i7.toCatalyst(expr)
+        catalystExpr = expr,//i7.toCatalyst(expr)
+        encoder = i7
       )
     )
   }
@@ -139,7 +143,9 @@ package object functions extends Udf with UnaryFunctions {
       i5: IsHCons.Aux[KS, K, HNil],
       i6: IsHCons.Aux[VS, V, HNil],
       i7: TypedEncoder[V],
-      i8: ClassTag[A]
+      i8: ClassTag[A],
+      i9: Accessors[A,G],
+      i10: ClassTag[V]
     ): TypedColumn[T, Option[A]] = {
     val expr = value match {
       case Some(some) => {
@@ -161,7 +167,8 @@ package object functions extends Udf with UnaryFunctions {
         dataType = i7.catalystRepr,
         nullable = true,
         show = () => value.toString,
-        i7.toCatalyst(expr)
+        catalystExpr = expr,//i7.toCatalyst(expr)
+        encoder = i7
       )
     )
   }

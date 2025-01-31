@@ -15,7 +15,7 @@ import shapeless.ops.hlist.IsHCons
 import com.sparkutils.shim.expressions.{ExternalMapToCatalyst7 => ExternalMapToCatalyst, MapObjects5 => MapObjects, UnwrapOption2 => UnwrapOption, WrapOption2 => WrapOption}
 import frameless.{reflection => ScalaReflection}
 import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{ArrayEncoder, DEFAULT_JAVA_DECIMAL_ENCODER, DEFAULT_SCALA_DECIMAL_ENCODER, IterableEncoder, JavaBigIntEncoder, MapEncoder, OptionEncoder, PrimitiveBooleanEncoder, PrimitiveByteEncoder, PrimitiveDoubleEncoder, PrimitiveFloatEncoder, PrimitiveIntEncoder, PrimitiveLongEncoder, PrimitiveShortEncoder, STRICT_DATE_ENCODER, STRICT_INSTANT_ENCODER, STRICT_TIMESTAMP_ENCODER, ScalaBigIntEncoder, ScalaDecimalEncoder, StringEncoder, TimestampEncoder, TransformingEncoder, UDTEncoder}
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{ArrayEncoder, BinaryEncoder, DEFAULT_JAVA_DECIMAL_ENCODER, DEFAULT_SCALA_DECIMAL_ENCODER, IterableEncoder, JavaBigIntEncoder, MapEncoder, OptionEncoder, PrimitiveBooleanEncoder, PrimitiveByteEncoder, PrimitiveDoubleEncoder, PrimitiveFloatEncoder, PrimitiveIntEncoder, PrimitiveLongEncoder, PrimitiveShortEncoder, STRICT_DATE_ENCODER, STRICT_INSTANT_ENCODER, STRICT_TIMESTAMP_ENCODER, ScalaBigIntEncoder, ScalaDecimalEncoder, StringEncoder, TimestampEncoder, TransformingEncoder, UDTEncoder}
 import org.apache.spark.sql.shim.{Invoke5 => Invoke, NewInstance4 => NewInstance, StaticInvoke4 => StaticInvoke}
 
 import java.sql
@@ -63,23 +63,29 @@ object TypedEncoder {
   implicit val stringEncoder: TypedEncoder[String] = new TypedEncoder[String] {
     override def agnosticEncoder: AgnosticEncoder[String] = StringEncoder
     override def jvmRepr: DataType = FramelessInternals.objectTypeFor[String]
+
+    override def toString: String = s"StringEncoder"
   }
 
   implicit val booleanEncoder: TypedEncoder[Boolean] =
     new TypedEncoder[Boolean] {
       override def agnosticEncoder: AgnosticEncoder[Boolean] = PrimitiveBooleanEncoder
+      override def toString: String = s"BooleanEncoder"
     }
 
   implicit val intEncoder: TypedEncoder[Int] = new TypedEncoder[Int] {
     override def agnosticEncoder: AgnosticEncoder[Int] = PrimitiveIntEncoder
+    override def toString: String = s"IntEncoder"
   }
 
   implicit val longEncoder: TypedEncoder[Long] = new TypedEncoder[Long] {
     override def agnosticEncoder: AgnosticEncoder[Long] = PrimitiveLongEncoder
+    override def toString: String = s"LongEncoder"
   }
 
   implicit val shortEncoder: TypedEncoder[Short] = new TypedEncoder[Short] {
     override def agnosticEncoder: AgnosticEncoder[Short] = PrimitiveShortEncoder
+    override def toString: String = s"ShortEncoder"
   }
 
   implicit val charEncoder: TypedEncoder[Char] = new TypedEncoder[Char] {
@@ -102,41 +108,50 @@ object TypedEncoder {
         classTag,
         StringEncoder,
         InjectionCodecs.wrap(charAsString))
+
+    override def toString: String = s"CharEncoder"
   }
 
   implicit val byteEncoder: TypedEncoder[Byte] = new TypedEncoder[Byte] {
     override def agnosticEncoder: AgnosticEncoder[Byte] = PrimitiveByteEncoder
+    override def toString: String = s"ByteEncoder"
   }
 
   implicit val floatEncoder: TypedEncoder[Float] = new TypedEncoder[Float] {
     override def agnosticEncoder: AgnosticEncoder[Float] = PrimitiveFloatEncoder
+    override def toString: String = s"FloatEncoder"
   }
 
   implicit val doubleEncoder: TypedEncoder[Double] = new TypedEncoder[Double] {
     override def agnosticEncoder: AgnosticEncoder[Double] = PrimitiveDoubleEncoder
+    override def toString: String = s"DoubleEncoder"
   }
 
   implicit val bigDecimalEncoder: TypedEncoder[BigDecimal] =
     new TypedEncoder[BigDecimal] {
       override def jvmRepr: DataType = ScalaReflection.dataTypeFor[BigDecimal]
       override def agnosticEncoder: AgnosticEncoder[BigDecimal] = DEFAULT_SCALA_DECIMAL_ENCODER
+      override def toString: String = s"BigDecimalEncoder"
     }
 
   implicit val javaBigDecimalEncoder: TypedEncoder[java.math.BigDecimal] =
     new TypedEncoder[java.math.BigDecimal] {
       override def jvmRepr: DataType = ScalaReflection.dataTypeFor[java.math.BigDecimal]
       override def agnosticEncoder: AgnosticEncoder[java.math.BigDecimal] = DEFAULT_JAVA_DECIMAL_ENCODER
+      override def toString: String = s"JavaBigDecimalEncoder"
     }
 
   implicit val bigIntEncoder: TypedEncoder[BigInt] = new TypedEncoder[BigInt] {
     override def jvmRepr: DataType = ScalaReflection.dataTypeFor[BigInt]
     override def agnosticEncoder: AgnosticEncoder[BigInt] = ScalaBigIntEncoder
+    override def toString: String = s"BigIntEncoder"
   }
 
   implicit val javaBigIntEncoder: TypedEncoder[BigInteger] =
     new TypedEncoder[BigInteger] {
       override def jvmRepr: DataType = ScalaReflection.dataTypeFor[BigInteger]
       override def agnosticEncoder: AgnosticEncoder[BigInteger] = JavaBigIntEncoder
+      override def toString: String = s"JavaBigIntEncoder"
     }
 
   implicit val sqlDate: TypedEncoder[SQLDate] = new TypedEncoder[SQLDate] {
@@ -155,12 +170,15 @@ object TypedEncoder {
         classTag,
         PrimitiveIntEncoder,
         InjectionCodecs.wrap(sqlDateAsDate))
+
+    override def toString: String = s"SQLDateEncoder"
   }
 
   implicit val timestampEncoder: TypedEncoder[Timestamp] =
     new TypedEncoder[Timestamp] {
       override def jvmRepr: DataType = ScalaReflection.dataTypeFor[Timestamp]
       override def agnosticEncoder: AgnosticEncoder[Timestamp] = STRICT_TIMESTAMP_ENCODER
+      override def toString: String = s"TimeStampEncoder"
     }
 
   implicit val dateEncoder: TypedEncoder[Date] = new TypedEncoder[Date] {
@@ -180,12 +198,15 @@ object TypedEncoder {
         classTag,
         STRICT_INSTANT_ENCODER,
         InjectionCodecs.wrap(dateAsInstant))
+
+    override def toString: String = s"DateEncoder"
   }
 
   implicit val sqlDateEncoder: TypedEncoder[java.sql.Date] =
     new TypedEncoder[java.sql.Date] {
       override def jvmRepr: DataType = ScalaReflection.dataTypeFor[java.sql.Date]
       override def agnosticEncoder: AgnosticEncoder[sql.Date] = STRICT_DATE_ENCODER
+      override def toString: String = s"SQLDateEncoder"
     }
 
   implicit val sqlTimestamp: TypedEncoder[SQLTimestamp] =
@@ -204,12 +225,15 @@ object TypedEncoder {
           classTag,
           PrimitiveLongEncoder,
           InjectionCodecs.wrap(sqlTimestampAsLong))
+
+      override def toString: String = s"SQLTimestampEncoder"
     }
 
   /** java.time Encoders, Spark uses https://github.com/apache/spark/blob/v3.2.0/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/util/DateTimeUtils.scala for encoding / decoding. */
   implicit val timeInstant: TypedEncoder[Instant] = new TypedEncoder[Instant] {
     override def jvmRepr: DataType = ScalaReflection.dataTypeFor[Instant]
     override def agnosticEncoder: AgnosticEncoder[Instant] = STRICT_INSTANT_ENCODER
+    override def toString: String = s"InstantEncoder"
   }
 
   /**
@@ -235,10 +259,10 @@ object TypedEncoder {
 
   implicit def arrayEncoder[T: ClassTag](
       implicit
-      i0: Lazy[TypedEncoder[T]]
+      i0: Lazy[RecordFieldEncoder[T]]
     ): TypedEncoder[Array[T]] =
     new TypedEncoder[Array[T]] {
-      private lazy val encodeT = i0.value
+      private lazy val encodeT = i0.value.encoder
 
       override def jvmRepr: DataType = encodeT.jvmRepr match {
         case ByteType => BinaryType
@@ -246,7 +270,12 @@ object TypedEncoder {
       }
 
       override def agnosticEncoder: AgnosticEncoder[Array[T]] =
-        ArrayEncoder(encodeT.agnosticEncoder, containsNull = false)
+        encodeT.jvmRepr match {
+          case ByteType => BinaryEncoder.asInstanceOf[AgnosticEncoder[Array[T]]]
+          case _ => ArrayEncoder(encodeT.agnosticEncoder, containsNull = false)
+        }
+
+      override def toString: String = s"ArrayEncoder[$jvmRepr]"
     }
 
   /**
@@ -302,26 +331,25 @@ object TypedEncoder {
 
   implicit def seqEncoder[C[X] <: Seq[X], T](
       implicit
-      i0: Lazy[TypedEncoder[T]],
+      i0: Lazy[RecordFieldEncoder[T]],
       i1: ClassTag[C[T]],
       i2: CollectionConversion[Seq, C, T]
     ) = collectionEncoder[Seq, C, T]
 
   implicit def setEncoder[C[X] <: Set[X], T](
       implicit
-      i0: Lazy[TypedEncoder[T]],
+      i0: Lazy[RecordFieldEncoder[T]],
       i1: ClassTag[C[T]],
       i2: CollectionConversion[Set, C, T]
     ) = collectionEncoder[Set, C, T]
 
   def collectionEncoder[O[_], C[X], T](
       implicit
-      i0: Lazy[TypedEncoder[T]],
+      i0: Lazy[RecordFieldEncoder[T]],
       i1: ClassTag[C[T]],
       i2: CollectionConversion[O, C, T]
     ): TypedEncoder[C[T]] = new TypedEncoder[C[T]] {
-    private lazy val encodeT = i0.value
-
+    private lazy val encodeT = i0.value.encoder
 
     override def jvmRepr: DataType = FramelessInternals.objectTypeFor[C[T]](i1)
 /*
@@ -367,6 +395,8 @@ object TypedEncoder {
         encodeT.agnosticEncoder,
         containsNull = false,
         lenientSerialization = false).asInstanceOf[AgnosticEncoder[C[T]]] // only C is provided
+
+    override def toString: String = s"CollectionEncoder[$jvmRepr]"
   }
 
   /**
@@ -377,13 +407,13 @@ object TypedEncoder {
    */
   implicit def mapEncoder[A: NotCatalystNullable, B](
       implicit
-      i0: Lazy[TypedEncoder[A]],
-      i1: Lazy[TypedEncoder[B]]
+      i0: Lazy[RecordFieldEncoder[A]],
+      i1: Lazy[RecordFieldEncoder[B]]
     ): TypedEncoder[Map[A, B]] = new TypedEncoder[Map[A, B]] {
     override def jvmRepr: DataType = FramelessInternals.objectTypeFor[Map[A, B]]
 
-    private lazy val encodeA = i0.value
-    private lazy val encodeB = i1.value
+    private lazy val encodeA = i0.value.encoder
+    private lazy val encodeB = i1.value.encoder
 
     override def agnosticEncoder: AgnosticEncoder[Map[A, B]] =
       MapEncoder(
@@ -445,7 +475,7 @@ object TypedEncoder {
 
     override def toString = s"mapEncoder($jvmRepr)"*/
 
-
+    override def toString: String = s"MapEncoder[$jvmRepr]"
   }
 
   implicit def optionEncoder[A](
@@ -529,6 +559,8 @@ object TypedEncoder {
        * Create the underlying AgnosticEncoder
        */
       override def agnosticEncoder: AgnosticEncoder[Option[A]] = OptionEncoder(underlying.agnosticEncoder)
+
+      override def toString: String = s"OptionEncoder[$jvmRepr]"
     }
 
   /** Encodes things using injection if there is one defined */
@@ -545,6 +577,8 @@ object TypedEncoder {
           classTag,
           trb.agnosticEncoder,
           InjectionCodecs.wrap(inj))
+
+      override def toString: String = s"InjectionEncoder"
     }
 
   /** Encodes things as records if there is no Injection defined */
@@ -572,6 +606,8 @@ object TypedEncoder {
        */
       override def agnosticEncoder: AgnosticEncoder[A] =
         UDTEncoder[A](udt, udt.getClass)
+
+      override def toString: String = s"UserDefinedTypeEncoder"
     }
   }
 

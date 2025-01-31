@@ -1,15 +1,17 @@
 package frameless.functions
 
+import frameless.TypedEncoder
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.expressions.{Expression, NonSQLExpression}
 import org.apache.spark.sql.types.DataType
 
-private[frameless] case class Lit[T <: AnyVal](
+private[frameless] case class Lit[T](
     dataType: DataType,
     nullable: Boolean,
     show: () => String,
-    catalystExpr: Expression // must be a generated Expression from a literal TypedEncoder's toCatalyst function
+    catalystExpr: Expression, // must be a generated Expression from a literal TypedEncoder's toCatalyst function
+    encoder: TypedEncoder[T]
 ) extends Expression with NonSQLExpression {
   override def toString: String = s"FramelessLit(${show()})"
 

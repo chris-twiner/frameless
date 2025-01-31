@@ -1,22 +1,14 @@
 package frameless.refined
 
 import scala.reflect.ClassTag
-
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.types._
-
-import com.sparkutils.shim.expressions.{
-  UnwrapOption2 => UnwrapOption,
-  WrapOption2 => WrapOption
-}
-import org.apache.spark.sql.shim.{
-  Invoke5 => Invoke,
-  NewInstance4 => NewInstance
-}
-
+import com.sparkutils.shim.expressions.{UnwrapOption2 => UnwrapOption, WrapOption2 => WrapOption}
+import org.apache.spark.sql.shim.{Invoke5 => Invoke, NewInstance4 => NewInstance}
 import eu.timepit.refined.api.RefType
-
-import frameless.{ TypedEncoder, RecordFieldEncoder }
+import frameless.{RecordFieldEncoder, TypedEncoder}
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoder
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.OptionEncoder
 
 private[refined] trait RefinedFieldEncoders {
 
@@ -29,33 +21,37 @@ private[refined] trait RefinedFieldEncoders {
       i1: TypedEncoder[T],
       i2: ClassTag[F[T, R]]
     ): RecordFieldEncoder[Option[F[T, R]]] =
-    RecordFieldEncoder[Option[F[T, R]]](new TypedEncoder[Option[F[T, R]]] {
-      def nullable = true
+      new RecordFieldEncoder[Option[F[T, R]]](
+      new TypedEncoder[Option[F[T, R]]] {
+        override def jvmRepr = ObjectType(classOf[Option[F[T, R]]])
+        override def agnosticEncoder: AgnosticEncoder[Option[F[T, R]]] = OptionEncoder(refined.encoder.agnosticEncoder)
 
-      // `Refined` is a Value class: https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala-3.0-/eu/timepit/refined/api/Refined.scala#L8
-      def jvmRepr = ObjectType(classOf[Option[F[T, R]]])
+        /*def nullable = true
 
-      def catalystRepr: DataType = i1.catalystRepr
+        // `Refined` is a Value class: https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala-3.0-/eu/timepit/refined/api/Refined.scala#L8
+        def jvmRepr = ObjectType(classOf[Option[F[T, R]]])
 
-      val innerJvmRepr = ObjectType(i2.runtimeClass)
+        def catalystRepr: DataType = i1.catalystRepr
 
-      def fromCatalyst(path: Expression): Expression = {
-        val javaValue = i1.fromCatalyst(path)
-        val value = NewInstance(i2.runtimeClass, Seq(javaValue), innerJvmRepr)
+        val innerJvmRepr = ObjectType(i2.runtimeClass)
 
-        WrapOption(value, innerJvmRepr)
-      }
+        def fromCatalyst(path: Expression): Expression = {
+          val javaValue = i1.fromCatalyst(path)
+          val value = NewInstance(i2.runtimeClass, Seq(javaValue), innerJvmRepr)
 
-      @inline def toCatalyst(path: Expression): Expression = {
-        val value = UnwrapOption(innerJvmRepr, path)
+          WrapOption(value, innerJvmRepr)
+        }
 
-        val javaValue = Invoke(value, "value", i1.jvmRepr, Nil)
+        @inline def toCatalyst(path: Expression): Expression = {
+          val value = UnwrapOption(innerJvmRepr, path)
 
-        i1.toCatalyst(javaValue)
-      }
+          val javaValue = Invoke(value, "value", i1.jvmRepr, Nil)
 
-      override def toString = s"optionRefined[${i2.runtimeClass.getName}]"
-    })
+          i1.toCatalyst(javaValue)
+        }
+
+        override def toString = s"optionRefined[${i2.runtimeClass.getName}]"*/
+      })
 
   /**
    * @tparam T the refined type (e.g. `String`)
@@ -66,8 +62,13 @@ private[refined] trait RefinedFieldEncoders {
       i1: TypedEncoder[T],
       i2: ClassTag[F[T, R]]
     ): RecordFieldEncoder[F[T, R]] =
-    RecordFieldEncoder[F[T, R]](new TypedEncoder[F[T, R]] {
-      def nullable = i1.nullable
+     new RecordFieldEncoder[F[T, R]](
+     new TypedEncoder[F[T, R]] {
+       override def jvmRepr: DataType = i1.jvmRepr
+       override def agnosticEncoder: AgnosticEncoder[F[T, R]] =
+       // ugly, prev impl forwards as well
+         i1.agnosticEncoder.asInstanceOf[AgnosticEncoder[F[T, R]]]
+      /*def nullable = i1.nullable
 
       // `Refined` is a Value class: https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala-3.0-/eu/timepit/refined/api/Refined.scala#L8
       def jvmRepr = i1.jvmRepr
@@ -80,6 +81,7 @@ private[refined] trait RefinedFieldEncoders {
       @inline def toCatalyst(path: Expression): Expression =
         i1.toCatalyst(path)
 
-      override def toString = s"refined[${i2.runtimeClass.getName}]"
-    })
+      override def toString = s"refined[${i2.runtimeClass.getName}]"*/
+
+     })
 }
