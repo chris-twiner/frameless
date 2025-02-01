@@ -412,68 +412,120 @@ object TypedEncoder {
     ): TypedEncoder[Map[A, B]] = new TypedEncoder[Map[A, B]] {
     override def jvmRepr: DataType = FramelessInternals.objectTypeFor[Map[A, B]]
 
-    private lazy val encodeA = i0.value.encoder
-    private lazy val encodeB = i1.value.encoder
+    private lazy val encodeA = i0.value
+    private lazy val encodeB = i1.value
 
-    override def agnosticEncoder: AgnosticEncoder[Map[A, B]] =
-      MapEncoder(
+    private lazy val decoderA =
+      encodeA.encoder.agnosticEncoder.asInstanceOf[TransformingEncoder[_, _]].
+        codecProvider().asInstanceOf[Codec[A, Object]].decode _
+
+    private lazy val convertA: Any => A =
+      encodeA.valueClassUnderlying.fold[Any => A](a => a.asInstanceOf[A])(_ => {
+        a => decoderA(a.asInstanceOf[Object])
+      })
+
+    private lazy val decoderB =
+      encodeB.encoder.agnosticEncoder.asInstanceOf[TransformingEncoder[_, _]].
+        codecProvider().asInstanceOf[Codec[B, Object]].decode _
+
+    private lazy val convertB: Any => B =
+      encodeB.valueClassUnderlying.fold[Any => B](a => a.asInstanceOf[B])(_ => {
+        a => decoderB(a.asInstanceOf[Object])
+      })
+
+    private lazy val encoderA =
+      encodeA.encoder.agnosticEncoder.asInstanceOf[TransformingEncoder[_, _]].
+        codecProvider().asInstanceOf[Codec[Any, Any]].encode _
+
+    private lazy val revertA: Any => A =
+      encodeA.valueClassUnderlying.fold[Any => A](a => a.asInstanceOf[A])(_ => {
+        a => encoderA(a).asInstanceOf[A]
+      })
+
+    private lazy val encoderB =
+      encodeB.encoder.agnosticEncoder.asInstanceOf[TransformingEncoder[_, _]].
+        codecProvider().asInstanceOf[Codec[Any, Any]].encode _
+
+    private lazy val revertB: Any => B =
+      encodeB.valueClassUnderlying.fold[Any => B](a => a.asInstanceOf[B])(_ => {
+        a => encoderB(a).asInstanceOf[B]
+      })
+
+    val provider = () => new Codec[Map[A,B], Map[_,_]] {
+
+      override def decode(in: Map[_, _]): Map[A, B] = in.map { p =>
+        (convertA(p._1), convertB(p._2))
+      }
+
+      override def encode(out: Map[A, B]): Map[_, _] = out.map { p =>
+        (revertA(p._1), revertB(p._2))
+      }
+    }
+
+    override def agnosticEncoder: AgnosticEncoder[Map[A, B]] = {
+      TransformingEncoder[Map[A,B],Map[_,_]](
         classTag,
-        encodeA.agnosticEncoder,
-        encodeB.agnosticEncoder,
-        valueContainsNull = false)
-/*
-    lazy val catalystRepr: DataType =
-      MapType(encodeA.catalystRepr, encodeB.catalystRepr, encodeB.nullable)
-
-    def fromCatalyst(path: Expression): Expression = {
-      val keyArrayType = ArrayType(encodeA.catalystRepr, containsNull = false)
-
-      val keyData = Invoke(
-        MapObjects(
-          i0.value.fromCatalyst,
-          Invoke(path, "keyArray", keyArrayType),
-          encodeA.catalystRepr
-        ),
-        "array",
-        FramelessInternals.objectTypeFor[Array[Any]]
-      )
-
-      val valueArrayType = ArrayType(encodeB.catalystRepr, encodeB.nullable)
-
-      val valueData = Invoke(
-        MapObjects(
-          i1.value.fromCatalyst,
-          Invoke(path, "valueArray", valueArrayType),
-          encodeB.catalystRepr
-        ),
-        "array",
-        FramelessInternals.objectTypeFor[Array[Any]]
-      )
-
-      StaticInvoke(
-        ArrayBasedMapData.getClass,
-        jvmRepr,
-        "toScalaMap",
-        keyData :: valueData :: Nil
+        MapEncoder(
+          classTag.asInstanceOf[ClassTag[Map[_,_]]],
+          encodeA.valueClassUnderlying.fold[AgnosticEncoder[A]](encodeA.encoder.agnosticEncoder)(_.agnosticEncoder.asInstanceOf[AgnosticEncoder[A]]),
+          encodeB.valueClassUnderlying.fold[AgnosticEncoder[B]](encodeB.encoder.agnosticEncoder)(_.agnosticEncoder.asInstanceOf[AgnosticEncoder[B]]),
+          valueContainsNull = false),
+        provider
       )
     }
+    /*
+        lazy val catalystRepr: DataType =
+          MapType(encodeA.catalystRepr, encodeB.catalystRepr, encodeB.nullable)
 
-    def toCatalyst(path: Expression): Expression = {
-      val encA = i0.value
-      val encB = i1.value
+        def fromCatalyst(path: Expression): Expression = {
+          val keyArrayType = ArrayType(encodeA.catalystRepr, containsNull = false)
 
-      ExternalMapToCatalyst(
-        path,
-        encA.jvmRepr,
-        encA.toCatalyst,
-        false,
-        encB.jvmRepr,
-        encB.toCatalyst,
-        encodeB.nullable
-      )
-    }
+          val keyData = Invoke(
+            MapObjects(
+              i0.value.fromCatalyst,
+              Invoke(path, "keyArray", keyArrayType),
+              encodeA.catalystRepr
+            ),
+            "array",
+            FramelessInternals.objectTypeFor[Array[Any]]
+          )
 
-    override def toString = s"mapEncoder($jvmRepr)"*/
+          val valueArrayType = ArrayType(encodeB.catalystRepr, encodeB.nullable)
+
+          val valueData = Invoke(
+            MapObjects(
+              i1.value.fromCatalyst,
+              Invoke(path, "valueArray", valueArrayType),
+              encodeB.catalystRepr
+            ),
+            "array",
+            FramelessInternals.objectTypeFor[Array[Any]]
+          )
+
+          StaticInvoke(
+            ArrayBasedMapData.getClass,
+            jvmRepr,
+            "toScalaMap",
+            keyData :: valueData :: Nil
+          )
+        }
+
+        def toCatalyst(path: Expression): Expression = {
+          val encA = i0.value
+          val encB = i1.value
+
+          ExternalMapToCatalyst(
+            path,
+            encA.jvmRepr,
+            encA.toCatalyst,
+            false,
+            encB.jvmRepr,
+            encB.toCatalyst,
+            encodeB.nullable
+          )
+        }
+
+        override def toString = s"mapEncoder($jvmRepr)"*/
 
     override def toString: String = s"MapEncoder[$jvmRepr]"
   }

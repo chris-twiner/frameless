@@ -14,10 +14,13 @@ import shapeless.ops.record.Keys
 
 import scala.reflect.ClassTag
 
+class RecordFieldEncoder[T](val encoder: TypedEncoder[T], val valueClassUnderlying: Option[TypedEncoder[_]] = None) extends Serializable
+
 case class RecordEncoderField(
     ordinal: Int,
     name: String,
-    encoder: TypedEncoder[_])
+    encoder: TypedEncoder[_],
+    valueClassUnderlying: Option[TypedEncoder[_]] = None)
 
 trait RecordEncoderFields[T <: HList] extends Serializable {
   def value: List[RecordEncoderField]
@@ -55,7 +58,7 @@ object RecordEncoderFields {
       implicit
       key: Witness.Aux[K],
       e: RecordFieldEncoder[H]
-    ): RecordEncoderField = RecordEncoderField(0, key.value.name, e.encoder)
+    ): RecordEncoderField = RecordEncoderField(0, key.value.name, e.encoder, e.valueClassUnderlying)
 }
 
 /**
@@ -154,7 +157,7 @@ class RecordEncoder[F, G <: HList, H <: HList](
         classTag,
         fields.value.value.map(f => EncoderField(
           f.name,
-          f.encoder.agnosticEncoder,
+          f.valueClassUnderlying.fold[AgnosticEncoder[_]](f.encoder.agnosticEncoder)(_.agnosticEncoder),
           f.encoder.nullable,
           Metadata.empty) ),
         None)
@@ -211,8 +214,6 @@ class RecordEncoder[F, G <: HList, H <: HList](
   override def toString: String = s"RecordEncoder[$jvmRepr]"
 
 }
-
-class RecordFieldEncoder[T](val encoder: TypedEncoder[T]) extends Serializable
 
 object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
 
@@ -373,7 +374,7 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
     )*/
 
     override def toString: String = s"ValueClassEncoder[${i6.runtimeClass.getName} wraps $jvmRepr]"
-  })
+  }, Some(i5))
 }
 
 private[frameless] sealed trait RecordFieldEncoderLowPriority {
