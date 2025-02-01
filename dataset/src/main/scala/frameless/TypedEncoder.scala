@@ -45,6 +45,25 @@ object InjectionCodecs {
 
         override def decode(out: B): A = injection.invert(out)
       }
+
+
+  val decode: Codec[_, _] => Function[_, _] = (codec: Codec[_, _]) => codec.decode _
+  val encode: Codec[_, _] => Function[_, _] = (codec: Codec[_, _]) => codec.encode _
+
+  def convertPossibleValueClass[A, B](recordFieldEncoder: RecordFieldEncoder[_], op: Codec[_,_] => _ => _): A => B = {
+    recordFieldEncoder.encoder.agnosticEncoder match {
+      case tEnc: TransformingEncoder[_, _] =>
+        val dec =
+          op(tEnc.
+            codecProvider().asInstanceOf[Codec[_, _]])
+
+       recordFieldEncoder.valueClassUnderlying.fold[_ => Any]((a: Any) => a)(_ => {
+          a => dec(a)
+       }).asInstanceOf[A => B]
+      case _ => a => a.asInstanceOf[B]
+    }
+  }
+
 }
 
 // Waiting on scala 2.12
@@ -415,41 +434,11 @@ object TypedEncoder {
     private lazy val encodeA = i0.value
     private lazy val encodeB = i1.value
 
-    private lazy val decoderA =
-      encodeA.encoder.agnosticEncoder.asInstanceOf[TransformingEncoder[_, _]].
-        codecProvider().asInstanceOf[Codec[A, Object]].decode _
+    private lazy val convertA: Any => A = InjectionCodecs.convertPossibleValueClass(encodeA, InjectionCodecs.decode)
+    private lazy val convertB: Any => B = InjectionCodecs.convertPossibleValueClass(encodeB, InjectionCodecs.decode)
 
-    private lazy val convertA: Any => A =
-      encodeA.valueClassUnderlying.fold[Any => A](a => a.asInstanceOf[A])(_ => {
-        a => decoderA(a.asInstanceOf[Object])
-      })
-
-    private lazy val decoderB =
-      encodeB.encoder.agnosticEncoder.asInstanceOf[TransformingEncoder[_, _]].
-        codecProvider().asInstanceOf[Codec[B, Object]].decode _
-
-    private lazy val convertB: Any => B =
-      encodeB.valueClassUnderlying.fold[Any => B](a => a.asInstanceOf[B])(_ => {
-        a => decoderB(a.asInstanceOf[Object])
-      })
-
-    private lazy val encoderA =
-      encodeA.encoder.agnosticEncoder.asInstanceOf[TransformingEncoder[_, _]].
-        codecProvider().asInstanceOf[Codec[Any, Any]].encode _
-
-    private lazy val revertA: Any => A =
-      encodeA.valueClassUnderlying.fold[Any => A](a => a.asInstanceOf[A])(_ => {
-        a => encoderA(a).asInstanceOf[A]
-      })
-
-    private lazy val encoderB =
-      encodeB.encoder.agnosticEncoder.asInstanceOf[TransformingEncoder[_, _]].
-        codecProvider().asInstanceOf[Codec[Any, Any]].encode _
-
-    private lazy val revertB: Any => B =
-      encodeB.valueClassUnderlying.fold[Any => B](a => a.asInstanceOf[B])(_ => {
-        a => encoderB(a).asInstanceOf[B]
-      })
+    private lazy val revertA: Any => A = InjectionCodecs.convertPossibleValueClass(encodeA, InjectionCodecs.encode)
+    private lazy val revertB: Any => B = InjectionCodecs.convertPossibleValueClass(encodeB, InjectionCodecs.encode)
 
     val provider = () => new Codec[Map[A,B], Map[_,_]] {
 
