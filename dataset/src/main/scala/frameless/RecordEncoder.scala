@@ -313,6 +313,7 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i7: Accessors[F,G],
       i8: ClassTag[V]
     ): RecordFieldEncoder[F] = new RecordFieldEncoder(new TypedEncoder[F]() {
+    override def nullable: Boolean = i5.nullable
     override def agnosticEncoder: AgnosticEncoder[F] = {
 
       val valueFrom = Accessors.of[F].get.asInstanceOf[(F => V) :: HNil]

@@ -291,7 +291,16 @@ object TypedEncoder {
       override def agnosticEncoder: AgnosticEncoder[Array[T]] =
         encodeT.jvmRepr match {
           case ByteType => BinaryEncoder.asInstanceOf[AgnosticEncoder[Array[T]]]
-          case _ => ArrayEncoder(encodeT.agnosticEncoder, containsNull = false)
+          case IntegerType | LongType | DoubleType | FloatType | ShortType |
+               BooleanType =>
+            ArrayEncoder(encodeT.agnosticEncoder, encodeT.nullable)
+          case _ =>
+            IterableEncoder(
+              classTag,
+              encodeT.agnosticEncoder,
+              encodeT.nullable,
+              lenientSerialization = false).asInstanceOf[AgnosticEncoder[Array[T]]]
+            //collectionEncoder(encodeT.agnosticEncoder, containsNull = false)
         }
 
       override def toString: String = s"ArrayEncoder[$jvmRepr]"
@@ -412,7 +421,7 @@ object TypedEncoder {
       IterableEncoder(
         ClassTag(i1.runtimeClass),
         encodeT.agnosticEncoder,
-        containsNull = false,
+        encodeT.nullable,
         lenientSerialization = false).asInstanceOf[AgnosticEncoder[C[T]]] // only C is provided
 
     override def toString: String = s"CollectionEncoder[$jvmRepr]"
