@@ -1,7 +1,8 @@
 package frameless
 package ops
 
-import shapeless.{::, Generic, HList, Lazy}
+import shapeless.{::, Generic, HList, Lazy, LabelledGeneric}
+import shapeless.ops.hlist.Align
 
 /** Evidence for correctness of `TypedDataset[T].as[U]` */
 class As[T, U] private (implicit val encoder: TypedEncoder[U])

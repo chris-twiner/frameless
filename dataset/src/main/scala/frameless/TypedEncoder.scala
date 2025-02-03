@@ -291,15 +291,16 @@ object TypedEncoder {
       override def agnosticEncoder: AgnosticEncoder[Array[T]] =
         encodeT.jvmRepr match {
           case ByteType => BinaryEncoder.asInstanceOf[AgnosticEncoder[Array[T]]]
-          case IntegerType | LongType | DoubleType | FloatType | ShortType |
-               BooleanType =>
-            ArrayEncoder(encodeT.agnosticEncoder, encodeT.nullable)
+          //case IntegerType | LongType | DoubleType | FloatType | ShortType |
+          //     BooleanType =>
           case _ =>
+            ArrayEncoder(encodeT.agnosticEncoder, encodeT.nullable)
+          /*case _ =>
             IterableEncoder(
               classTag,
               encodeT.agnosticEncoder,
               encodeT.nullable,
-              lenientSerialization = false).asInstanceOf[AgnosticEncoder[Array[T]]]
+              lenientSerialization = false).asInstanceOf[AgnosticEncoder[Array[T]]]*/
             //collectionEncoder(encodeT.agnosticEncoder, containsNull = false)
         }
 

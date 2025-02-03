@@ -239,7 +239,6 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i4: IsHCons.Aux[KS, K, HNil],
       i5: TypedEncoder[V],
       i6: ClassTag[F],
-      i7: Accessors[F,G],
       i8: ClassTag[V]
     ): RecordFieldEncoder[Option[F]] = {
       new RecordFieldEncoder(TypedEncoder.optionEncoder(valueClass.encoder))
@@ -310,13 +309,10 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i4: IsHCons.Aux[KS, K, HNil],
       i5: TypedEncoder[V],
       i6: ClassTag[F],
-      i7: Accessors[F,G],
       i8: ClassTag[V]
     ): RecordFieldEncoder[F] = new RecordFieldEncoder(new TypedEncoder[F]() {
     override def nullable: Boolean = i5.nullable
     override def agnosticEncoder: AgnosticEncoder[F] = {
-
-      val valueFrom = Accessors.of[F].get.asInstanceOf[(F => V) :: HNil]
 
       val cls = i6.runtimeClass
       val cons = cls.getConstructor(i8.runtimeClass)
@@ -332,7 +328,7 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
             Metadata.empty)),
           None)*/,
         () => new Codec[F, V] {
-          override def encode(in: F): V = valueFrom.head(in)
+          override def encode(in: F): V = i2.head(i1.apply(i0.to(in)))
 
           override def decode(out: V): F = cons.newInstance(out).asInstanceOf[F]
         }

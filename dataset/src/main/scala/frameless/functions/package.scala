@@ -93,8 +93,7 @@ package object functions extends Udf with UnaryFunctions {
       i6: IsHCons.Aux[VS, V, HNil],
       i7: TypedEncoder[V],
       i8: ClassTag[A],
-      i9: Accessors[A,G],
-      i10: ClassTag[V]
+      i9: ClassTag[V]
   ): TypedColumn[T, A] = {
     val expr = {
       val field: H = i1(i0.to(value))
@@ -144,8 +143,7 @@ package object functions extends Udf with UnaryFunctions {
       i6: IsHCons.Aux[VS, V, HNil],
       i7: TypedEncoder[V],
       i8: ClassTag[A],
-      i9: Accessors[A,G],
-      i10: ClassTag[V]
+      i9: ClassTag[V]
     ): TypedColumn[T, Option[A]] = {
     val expr = value match {
       case Some(some) => {
