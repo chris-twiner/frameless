@@ -20,9 +20,6 @@ import shapeless.test.illTyped
 import org.scalatest.matchers.should.Matchers
 
 final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
-
-  val agnosticNonPrimitiveNullable = true // agnostic encoders do not allow nullability to be controlled
-
   test("Unable to encode products made from units only") {
     illTyped("TypedEncoder[UnitsOnly]")
   }
@@ -98,7 +95,7 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
     encoder.jvmRepr shouldBe ObjectType(classOf[Name])
 
     encoder.catalystRepr shouldBe StructType(
-      Seq(StructField("value", StringType, agnosticNonPrimitiveNullable)))
+      Seq(StructField("value", StringType, false)))
 
     val sqlContext = session.sqlContext
     import sqlContext.implicits._
@@ -127,7 +124,7 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
     encoder.jvmRepr shouldBe ObjectType(classOf[Person])
 
     val expectedPersonStructType = StructType(Seq(
-      StructField("name", StringType, agnosticNonPrimitiveNullable),
+      StructField("name", StringType, false),
       StructField("age", IntegerType, false)))
 
     encoder.catalystRepr shouldBe expectedPersonStructType
@@ -227,7 +224,7 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
     // Safely created ds
     TypedDataset.create(expected).collect.run() shouldBe expected
   }
-/*
+
   test("Case class with simple Map") {
     import RecordEncoderTests._
 
@@ -239,7 +236,7 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
       StructField("m", MapType(
         keyType = StringType,
         valueType = IntegerType,
-        valueContainsNull = false), agnosticNonPrimitiveNullable)))
+        valueContainsNull = false), false)))
 
     encoder.catalystRepr shouldBe expectedStructType
 
@@ -269,7 +266,7 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
     val ds2 = ds1.withColumnReplaced('m, functions.lit(m2))
 
     ds2.collect.run() shouldBe expected.map(_.copy(m = m2))
-  }*/
+  }
 
   test("Case class with Map & Value class") {
     import RecordEncoderTests._
@@ -279,11 +276,11 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
     encoder.jvmRepr shouldBe ObjectType(classOf[Student])
 
     val expectedStudentStructType = StructType(Seq(
-      StructField("name", StringType, agnosticNonPrimitiveNullable),
+      StructField("name", StringType, false),
       StructField("grades", MapType(
         keyType = StringType,
         valueType = DecimalType.SYSTEM_DEFAULT,
-        valueContainsNull = false), agnosticNonPrimitiveNullable)))
+        valueContainsNull = false), false)))
 
     encoder.catalystRepr shouldBe expectedStudentStructType
 
@@ -321,6 +318,9 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
       Student("Foo", grades), Student("Bar", grades))
   }
 
+  /* TODO test map with case class that has a value class parameter, ensure the map handling is top level broken
+   only and not lower down also breaking */
+
   test("Encode binary array") {
     val encoder = TypedEncoder[Tuple2[String, Array[Byte]]]
 
@@ -328,8 +328,8 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
       classOf[Tuple2[String, Array[Byte]]])
 
     val expectedStructType = StructType(Seq(
-      StructField("_1", StringType, agnosticNonPrimitiveNullable),
-      StructField("_2", BinaryType, agnosticNonPrimitiveNullable)))
+      StructField("_1", StringType, false),
+      StructField("_2", BinaryType, false)))
 
     encoder.catalystRepr shouldBe expectedStructType
 
@@ -365,8 +365,8 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
       classOf[Tuple2[String, Array[Int]]])
 
     val expectedStructType = StructType(Seq(
-      StructField("_1", StringType, agnosticNonPrimitiveNullable),
-      StructField("_2", ArrayType(IntegerType, false), agnosticNonPrimitiveNullable)))
+      StructField("_1", StringType, false),
+      StructField("_2", ArrayType(IntegerType, false), false)))
 
     encoder.catalystRepr shouldBe expectedStructType
 
@@ -409,8 +409,8 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
       classOf[Tuple2[String, Array[Subject]]])
 
     val expectedStructType = StructType(Seq(
-      StructField("_1", StringType, agnosticNonPrimitiveNullable),
-      StructField("_2", ArrayType(StringType, false), agnosticNonPrimitiveNullable)))
+      StructField("_1", StringType, false),
+      StructField("_2", ArrayType(StringType, false), false)))
 
     encoder.catalystRepr shouldBe expectedStructType
 
@@ -455,7 +455,7 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
 
     val expectedStructType = StructType(Seq(
       StructField("a", ArrayType(StructType(Seq(
-        StructField("x", IntegerType, false))), false), agnosticNonPrimitiveNullable)))
+        StructField("x", IntegerType, false))), false), false)))
 
     encoder.catalystRepr shouldBe expectedStructType
 
@@ -494,7 +494,7 @@ final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
 
     val expectedStructType = StructType(Seq(
       StructField("_1", IntegerType, false),
-      StructField("_2", ArrayType(StringType, false), agnosticNonPrimitiveNullable)))
+      StructField("_2", ArrayType(StringType, false), false)))
 
     encoder.catalystRepr shouldBe expectedStructType
 

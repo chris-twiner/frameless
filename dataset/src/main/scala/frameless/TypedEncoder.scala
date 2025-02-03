@@ -25,7 +25,7 @@ abstract class TypedEncoder[T](
     implicit
     val classTag: ClassTag[T])
     extends Serializable {
-  def nullable: Boolean = agnosticEncoder.nullable
+  def nullable: Boolean = false
 
   def jvmRepr: DataType = agnosticEncoder.dataType
   def catalystRepr: DataType = agnosticEncoder.dataType
@@ -451,6 +451,7 @@ object TypedEncoder {
       }
     }
 
+    // MAP key / values with TransformingEncoder as top level do not seem to work
     override def agnosticEncoder: AgnosticEncoder[Map[A, B]] = {
       TransformingEncoder[Map[A,B],Map[_,_]](
         classTag,
@@ -524,6 +525,8 @@ object TypedEncoder {
       underlying: TypedEncoder[A]
     ): TypedEncoder[Option[A]] =
     new TypedEncoder[Option[A]] {
+
+      override def nullable: Boolean = true
 
       override def jvmRepr: DataType =
         FramelessInternals.objectTypeFor[Option[A]](classTag)
