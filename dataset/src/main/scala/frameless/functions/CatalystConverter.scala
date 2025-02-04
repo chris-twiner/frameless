@@ -1,7 +1,7 @@
 package frameless.functions
 
 import frameless.{TypedEncoder, TypedExpressionEncoder}
-import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.{CatalystTypeConverters, InternalRow}
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodeGenerator, CodegenContext}
 import org.apache.spark.sql.types.DataType
@@ -15,6 +15,13 @@ trait CatalystConverter[T] {
 
   lazy val isSerializedAsStructForTopLevel =
     typedEnc.isSerializedAsStructForTopLevel
+
+  def fromCatalyst(catalyst: Any, expressionEncoder: ExpressionEncoder[Any], dataType: DataType): Any = {
+    if (expressionEncoder.isSerializedAsStructForTopLevel)
+      expressionEncoder.createDeserializer().apply(catalyst.asInstanceOf[InternalRow])
+    else
+      CatalystTypeConverters.convertToScala(catalyst, dataType)
+  }
 
   def processResponse(jvm: T): Any = {
 

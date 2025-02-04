@@ -151,8 +151,10 @@ case class FramelessUdf[T, R](
 
   override def toString: String = s"FramelessUdf(${children.mkString(", ")})"
 
+  lazy val pairs = children.zip(encoders.map(e => ExpressionEncoder(e.agnosticEncoder)))
+
   def eval(input: InternalRow): Any = {
-    val jvmTypes = children.map(_.eval(input))
+    val jvmTypes = pairs.map( p => fromCatalyst(p._1.eval(input), p._2.asInstanceOf[ExpressionEncoder[Any]], p._1.dataType))
 
     val returnJvm = evalFunction(jvmTypes).asInstanceOf[R]
     processResponse(returnJvm)
