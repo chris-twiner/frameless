@@ -12,27 +12,6 @@ import scala.reflect.ClassTag
 
 /** Evidence for correctness of `TypedDataset[T].as[U]` */
 class As[T, U] private (implicit val encoder: TypedEncoder[U])
-/*
-case class Convertible[A, B, AR <: HList, BR <: HList]()(implicit
-   val genA: Generic.Aux[A, AR],
-   val genB: Generic.Aux[B, BR],
-   val alignEncode: Align[AR, BR],
-   val alignDecode: Align[BR, AR],
-)
-
-object Convertible {
-  def apply[A, B, AR <: HList, BR <: HList](implicit
-    convertible: Convertible[A, B, AR, BR]
-    ): Convertible[A, B, AR, BR] = convertible
-
-  implicit def derive[A, B, AR <: HList, BR <: HList](implicit
-    genA: Generic.Aux[A, AR],
-    genB: Generic.Aux[B, BR],
-    alignEncode: Align[AR, BR],
-    alignDecode: Align[BR, AR],
-   ): Convertible[A, B, AR, BR] = new Convertible[A, B, AR, BR]()
-}
-*/
 
 trait Convertible[A, B] extends Codec[A,B] {
   type Intermediate <: HList
