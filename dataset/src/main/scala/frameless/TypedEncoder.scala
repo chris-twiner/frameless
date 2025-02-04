@@ -16,6 +16,7 @@ import com.sparkutils.shim.expressions.{ExternalMapToCatalyst7 => ExternalMapToC
 import frameless.{reflection => ScalaReflection}
 import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
 import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{ArrayEncoder, BinaryEncoder, DEFAULT_JAVA_DECIMAL_ENCODER, DEFAULT_SCALA_DECIMAL_ENCODER, IterableEncoder, JavaBigIntEncoder, MapEncoder, OptionEncoder, PrimitiveBooleanEncoder, PrimitiveByteEncoder, PrimitiveDoubleEncoder, PrimitiveFloatEncoder, PrimitiveIntEncoder, PrimitiveLongEncoder, PrimitiveShortEncoder, STRICT_DATE_ENCODER, STRICT_INSTANT_ENCODER, STRICT_TIMESTAMP_ENCODER, ScalaBigIntEncoder, ScalaDecimalEncoder, StringEncoder, TimestampEncoder, TransformingEncoder, UDTEncoder}
+import org.apache.spark.sql.catalyst.util.DateTimeUtils.{instantToMicros, microsToInstant}
 import org.apache.spark.sql.shim.{Invoke5 => Invoke, NewInstance4 => NewInstance, StaticInvoke4 => StaticInvoke}
 
 import java.sql
@@ -232,17 +233,17 @@ object TypedEncoder {
     new TypedEncoder[SQLTimestamp] {
       override def jvmRepr: DataType = ScalaReflection.dataTypeFor[SQLTimestamp]
 
-      val sqlTimestampAsLong: Injection[SQLTimestamp, Long] =
-        new Injection[SQLTimestamp, Long] {
-          def apply(a: SQLTimestamp): Long = a.us
+      val sqlTimestampAsLong: Injection[SQLTimestamp, java.sql.Timestamp] =
+        new Injection[SQLTimestamp, java.sql.Timestamp]{
+          def apply(a: SQLTimestamp): java.sql.Timestamp = Timestamp.from(microsToInstant(a.us))
 
-          def invert(b: Long): SQLTimestamp = SQLTimestamp(b)
+          def invert(b: java.sql.Timestamp): SQLTimestamp = SQLTimestamp(instantToMicros(b.toInstant))
         }
 
       override def agnosticEncoder: AgnosticEncoder[SQLTimestamp] =
-        TransformingEncoder[SQLTimestamp, Long](
+        TransformingEncoder[SQLTimestamp, java.sql.Timestamp](
           classTag,
-          PrimitiveLongEncoder,
+          TimestampEncoder(false),
           InjectionCodecs.wrap(sqlTimestampAsLong))
 
       override def toString: String = s"SQLTimestampEncoder"
