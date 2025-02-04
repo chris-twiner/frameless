@@ -1,6 +1,8 @@
 package frameless
 package ops
 
+import frameless.ops.As.Equiv
+import frameless.ops.Flatten.Aux
 import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.TransformingEncoder
 import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
 import shapeless.ops.hlist.Align
@@ -10,7 +12,7 @@ import scala.reflect.ClassTag
 
 /** Evidence for correctness of `TypedDataset[T].as[U]` */
 class As[T, U] private (implicit val encoder: TypedEncoder[U])
-
+/*
 case class Convertible[A, B, AR <: HList, BR <: HList]()(implicit
    val genA: Generic.Aux[A, AR],
    val genB: Generic.Aux[B, BR],
@@ -30,6 +32,33 @@ object Convertible {
     alignDecode: Align[BR, AR],
    ): Convertible[A, B, AR, BR] = new Convertible[A, B, AR, BR]()
 }
+*/
+
+trait Convertible[A, B] extends Codec[A,B] {
+  type Intermediate <: HList
+  implicit val flattenA: Flatten.Aux[A, Intermediate]
+  implicit val flattenB: Flatten.Aux[B, Intermediate]
+
+  override def encode(in: A): B = flattenB.reverse(flattenA.apply(in))
+
+  override def decode(out: B): A = flattenA.reverse(flattenB.apply(out))
+}
+
+object Convertible {
+  type Aux[A, B, HList] = Convertible[A, B] { type Intermediate = HList }
+
+  implicit def derive[A, B, IntermediateI <: HList](implicit
+                                                   evidenceOfEquivalence: Equiv[A, B],
+                                                   iflattenA: Flatten.Aux[A, IntermediateI],
+                                                   iflattenB: Flatten.Aux[B, IntermediateI]
+                                                  ): Convertible[A, B] = new Convertible[A, B] {
+    override type Intermediate = IntermediateI
+    override implicit val flattenA: _root_.frameless.ops.Flatten.Aux[A, IntermediateI] = iflattenA
+    override implicit val flattenB: _root_.frameless.ops.Flatten.Aux[B, IntermediateI] = iflattenB
+  }
+
+  def apply[A, B](implicit convertible: Convertible[A,B]): Aux[A, B, convertible.Intermediate] = convertible
+}
 
 object As extends LowPriorityAs {
 
@@ -37,20 +66,18 @@ object As extends LowPriorityAs {
 
   implicit def equivIdentity[A] = new Equiv[A, A]("identity")
 
-  implicit def deriveAs[A, B, AR <: HList, BR <: HList]
+  implicit def deriveAs[A, B]
     (implicit
      i0: TypedEncoder[A],
-     //i1: Equiv[A, B],
-     convertible: Convertible[A, B, AR, BR],
-     classTagA: ClassTag[A],
+     convertible: Convertible[A, B],
      classTagB: ClassTag[B]
     ): As[A, B] = {
     implicit val encB = new TypedEncoder[B] {
       val provider = () => new Codec[B, A] with Serializable {
-        import convertible._
-        override def encode(in: B): A = genA.from(alignDecode.apply(genB.to(in)))
 
-        override def decode(out: A): B = genB.from(alignEncode.apply(genA.to(out)))
+        override def encode(in: B): A = convertible.decode(in)
+
+        override def decode(out: A): B = convertible.encode(out)
       }
 
       override def agnosticEncoder: AgnosticEncoder[B] =
