@@ -3,6 +3,7 @@ package frameless
 import frameless.ops.{As, Convertible}
 import org.scalacheck.Prop
 import org.scalacheck.Prop._
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import shapeless.{::, Generic, HList, HNil}
 import shapeless._
 import shapeless.ops.hlist.Align
@@ -34,6 +35,45 @@ class AsTests extends TypedDatasetSuite {
     check(forAll(prop[Long, Int] _))
     check(forAll(prop[Seq[Seq[Option[Seq[Long]]]], Seq[Int]] _))
     check(forAll(prop[Seq[Option[Seq[String]]], Seq[Int]] _))
+  }
+
+  test("as underlying flatten structural equality") {
+    import frameless.ops.Flatten
+    import frameless.ops.Flatten._
+
+    val at = implicitly[Flatten[((Int, String), Float)]]
+    val bt = implicitly[Flatten[X2[X2[Int, String], Float]]]
+
+    // prove using flattened Int :: String :: Float :: HNil and swapping flatteners for reverse works
+    val a = ((1, "a"), 1.0f)
+    val b = X2(X2(1, "a"), 1.0f)
+    val afVal = a.flattenIt
+    val bfVal = b.flattenIt
+
+    // types are the same
+    val bofAfVal = bt.reverse(afVal.asInstanceOf[bt.Out])
+    val aofBfVal = at.reverse(bfVal.asInstanceOf[at.Out])
+
+    bofAfVal shouldEqual b
+    aofBfVal shouldEqual a
+  }
+
+  test("as underlying deeply nested") {
+    import frameless.ops.Flatten
+    import frameless.ops.Flatten._
+
+    // prove deeply nested roundtrips
+    type Test[A,B] = X2[A,B]
+
+    type TestType = Test[Float, Test[Test[Int, String], Test[Float, Test[String, Int]]]]
+
+    val cci = implicitly[Flatten[TestType]]
+    val cc: TestType = new Test(0.2f, new Test(new Test(1, "a"), new Test(1.0f, new Test("f", 0))))
+
+    val cctohl = cci.apply(cc)
+    val rev = cci.reverse(cctohl)
+
+    rev shouldEqual cc
   }
 
   test("as[X2[X2[A, B], C]") {
@@ -87,33 +127,5 @@ class AsTests extends TypedDatasetSuite {
 
     //val aVal = frameless.ops.flatten(((1,"a"), 1.0f))
     //val bVal = frameless.ops.flatten(X2(X2(1,"a"), 1.0f))
-
-    import frameless.ops.Flatten
-    import frameless.ops.Flatten._
-
-
-    val at = implicitly[Flatten[((Int,String),Float)]]
-    val bt = implicitly[Flatten[X2[X2[Int, String], Float]]]
-
-    val afVal = ((1,"a"), 1.0f).flattenIt
-    val bfVal = X2(X2(1,"a"), 1.0f).flattenIt
-
-    type Test[A,B] = X2[A,B]
-
-    type TestType = Test[Test[Int, String], Test[Float, Test[String, Int]]]
-
-    val cci = implicitly[Flatten[TestType]]
-    val cc: TestType = new Test(new Test(1, "a"), new Test(1.0f, new Test("f", 0)))
-
-    val cctohl = cci.apply(cc)
-    val rev = cci.reverse(cctohl)
-
-    println(s"cctohl $cctohl - rev $rev")
-/*
-
-    // types are the same
-    val bofAfVal = bt.reverse(afVal.asInstanceOf[bt.Out])
-    val aofBfVal = at.reverse(bfVal.asInstanceOf[at.Out])
-    println(s"bofAfVal $bofAfVal  -  aofBfVal $aofBfVal")*/
   }
 }

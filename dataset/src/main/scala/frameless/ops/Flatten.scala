@@ -76,10 +76,9 @@ object Flatten extends LowPriFlattenedImplicits {
      fh : Lazy[Aux[H, FH]],
      ft : Lazy[Aux[T, FT]],
      ++ : Prepend.Aux[FH, FT, Out],
-     lenFH: Length.Aux[FH, LEN],
-     actualInt: shapeless.ops.nat.ToInt[LEN],
-     take: Take[Out, LEN#N],
-     drop: Drop[Out, LEN#N]
+     lenFH: Length.Aux[FH, LEN], // force length to be derived
+     take: Take[Out, LEN#N], // this product
+     drop: Drop[Out, LEN#N] // the rest
    ): Aux[H :: T, Out] =
     make( {
       case h :: t ⇒
@@ -89,9 +88,6 @@ object Flatten extends LowPriFlattenedImplicits {
         )
     }, {
       case list: Out ⇒
-       // val list
-        //rvp.a(list)
-        val size = actualInt
         val hlist = take(list)
         val rlist = drop(list)
         val h = fh.value.reverse(hlist.asInstanceOf[FH])
