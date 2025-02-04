@@ -9,14 +9,17 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference,
 import org.apache.spark.sql.catalyst.plans.logical.{Join, JoinHint}
 import org.apache.spark.sql.catalyst.plans.Inner
 import org.apache.spark.sql.ShimUtils.column
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.TransformingEncoder
+import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
 import org.apache.spark.sql.classic.ClassicConversions.castToImpl
 import org.apache.spark.sql.types.StructType
 import shapeless._
 import shapeless.labelled.FieldType
-import shapeless.ops.hlist.{Diff, IsHCons, Mapper, Prepend, ToTraversable, Tupler}
+import shapeless.ops.hlist.{Align, Diff, IsHCons, Mapper, Prepend, ToTraversable, Tupler}
 import shapeless.ops.record.{Keys, Modifier, Remover, Values}
 
 import scala.language.experimental.macros
+import scala.reflect.ClassTag
 
 /**
  * [[TypedDataset]] is a safer interface for working with `Dataset`.
@@ -140,15 +143,6 @@ class TypedDataset[T] protected[frameless] (
         if (filterStr.isEmpty) selected else selected.filter(filterStr)
       )
     }
-  }
-
-  /** Returns a new [[TypedDataset]] where each record has been mapped on to the specified type. */
-  def as[U](
-    )(implicit
-      as: As[T, U]
-    ): TypedDataset[U] = {
-    implicit val uencoder = as.encoder
-    TypedDataset.create(dataset.as[U](TypedExpressionEncoder[U]))
   }
 
   /**
@@ -1659,6 +1653,19 @@ class TypedDataset[T] protected[frameless] (
 }
 
 object TypedDataset {
+
+  implicit class DatasetOps[T, TH <: HList](dataset: TypedDataset[T]){
+
+    /** Returns a new [[TypedDataset]] where each record has been mapped on to the specified type. */
+    def as[U](
+       )(implicit
+         as: As[T, U]
+    ): TypedDataset[U]  = {
+      implicit val enc = as.encoder
+      TypedDataset.create(dataset.dataset.as[U](TypedExpressionEncoder[U]))
+    }
+  }
+
 
   def create[A](
       data: Seq[A]

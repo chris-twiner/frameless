@@ -163,54 +163,7 @@ class RecordEncoder[F, G <: HList, H <: HList](
         None)
 
   override def jvmRepr: DataType = FramelessInternals.objectTypeFor[F]
-  /*def nullable: Boolean = false
 
-  def jvmRepr: DataType = FramelessInternals.objectTypeFor[F]
-
-  def catalystRepr: DataType = {
-    val structFields = fields.value.value.map { field =>
-      StructField(
-        name = field.name,
-        dataType = field.encoder.catalystRepr,
-        nullable = field.encoder.nullable,
-        metadata = Metadata.empty
-      )
-    }
-
-    StructType(structFields)
-  }
-
-  def toCatalyst(path: Expression): Expression = {
-    val nameExprs = fields.value.value.map { field => Literal(field.name) }
-
-    val valueExprs = fields.value.value.map { field =>
-      val fieldPath = Invoke(path, field.name, field.encoder.jvmRepr, Nil)
-      field.encoder.toCatalyst(fieldPath)
-    }
-
-    // the way exprs are encoded in CreateNamedStruct
-    val exprs = nameExprs.zip(valueExprs).flatMap {
-      case (nameExpr, valueExpr) => nameExpr :: valueExpr :: Nil
-    }
-
-    val createExpr = CreateNamedStruct(exprs)
-
-    ifIsNull(createExpr.dataType, path, createExpr)
-  }
-
-  def fromCatalyst(path: Expression): Expression = {
-    val exprs = fields.value.value.map { field =>
-      field.encoder.fromCatalyst(
-        GetStructField(path, field.ordinal, Some(field.name))
-      )
-    }
-
-    val newArgs = newInstanceExprs.value.from(exprs)
-    val newExpr =
-      NewInstance(classTag.runtimeClass, newArgs, jvmRepr, propagateNull = true)
-
-    ifIsNull(jvmRepr, path, newExpr)
-  }*/
   override def toString: String = s"RecordEncoder[$jvmRepr]"
 
 }
@@ -239,56 +192,15 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i4: IsHCons.Aux[KS, K, HNil],
       i5: TypedEncoder[V],
       i6: ClassTag[F],
-      i8: ClassTag[V]
+      i8: ClassTag[V],
+      i9: Generic.Aux[F, V :: HNil]
     ): RecordFieldEncoder[Option[F]] = {
       new RecordFieldEncoder(TypedEncoder.optionEncoder(valueClass.encoder))
-    /*
-    val fieldName = i4.head(i3()).name
-    val innerJvmRepr = ObjectType(i6.runtimeClass)
 
-    val catalyst: Expression => Expression = { path =>
-      val value = UnwrapOption(innerJvmRepr, path)
-      val javaValue = Invoke(value, fieldName, i5.jvmRepr, Nil)
-
-      i5.toCatalyst(javaValue)
-    }
-
-    val fromCatalyst: Expression => Expression = { path =>
-      val javaValue = i5.fromCatalyst(path)
-      val value = NewInstance(i6.runtimeClass, Seq(javaValue), innerJvmRepr)
-
-      WrapOption(value, innerJvmRepr)
-    }
-
-    val jvmr = ObjectType(classOf[Option[F]])
-
-    new RecordFieldEncoder[Option[F]](
-      encoder = new TypedEncoder[Option[F]] {
-        val nullable = true
-
-        val jvmRepr = jvmr
-
-        @inline def catalystRepr: DataType = i5.catalystRepr
-
-        def fromCatalyst(path: Expression): Expression = {
-          val javaValue = i5.fromCatalyst(path)
-          val value = NewInstance(i6.runtimeClass, Seq(javaValue), innerJvmRepr)
-
-          WrapOption(value, innerJvmRepr)
-        }
-
-        def toCatalyst(path: Expression): Expression = catalyst(path)
-
-        override def toString: String =
-          s"RecordFieldEncoder.optionValueClass[${i6.runtimeClass.getName}]('${fieldName}', $i5)"
-      },
-      jvmRepr = jvmr,
-      fromCatalyst = fromCatalyst,
-      toCatalyst = catalyst
-    ) */
   }
 
   /**
+   * The labeled type implicits are needed to differentiate field types, i9 is the actual usage for the Codec
    * @tparam F the value class
    * @tparam G the single field of the value class
    * @tparam H the single field of the value class (with guarantee it's not a `Unit` value)
@@ -309,66 +221,23 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i4: IsHCons.Aux[KS, K, HNil],
       i5: TypedEncoder[V],
       i6: ClassTag[F],
-      i8: ClassTag[V]
+      i8: ClassTag[V],
+      i9: Generic.Aux[F, V :: HNil]
     ): RecordFieldEncoder[F] = new RecordFieldEncoder(new TypedEncoder[F]() {
     override def nullable: Boolean = i5.nullable
     override def agnosticEncoder: AgnosticEncoder[F] = {
 
-      val cls = i6.runtimeClass
-      val cons = cls.getConstructor(i8.runtimeClass)
-
       TransformingEncoder[F,V](i6,
-        i5.agnosticEncoder
-        /*ProductEncoder[F](
-          i6,
-          Seq(EncoderField(
-            i4.head(i3()).name,
-            i5.agnosticEncoder,
-            i5.nullable,
-            Metadata.empty)),
-          None)*/,
+        i5.agnosticEncoder,
         () => new Codec[F, V] {
-          override def encode(in: F): V = i2.head(i1.apply(i0.to(in)))
+          override def encode(in: F): V = Generic[F].to(in).head
 
-          override def decode(out: V): F = cons.newInstance(out).asInstanceOf[F]
+          override def decode(out: V): F = i9.from(out :: HNil)
         }
       )
     }
 
     override def jvmRepr: DataType = FramelessInternals.objectTypeFor[V](i8)
-    /* { val cls = i6.runtimeClass
-    val jvmr = i5.jvmRepr
-    val fieldName = i4.head(i3()).name
-
-    new RecordFieldEncoder[F](
-      encoder = new TypedEncoder[F] {
-        def nullable = i5.nullable
-
-        def jvmRepr = jvmr
-
-        def catalystRepr: DataType = i5.catalystRepr
-
-        def fromCatalyst(path: Expression): Expression =
-          i5.fromCatalyst(path)
-
-        @inline def toCatalyst(path: Expression): Expression =
-          i5.toCatalyst(path)
-
-        override def toString: String =
-          s"RecordFieldEncoder.valueClass[${cls.getName}]('${fieldName}', ${i5})"
-      },
-      jvmRepr = FramelessInternals.objectTypeFor[F],
-      fromCatalyst = { expr: Expression =>
-        NewInstance(
-          i6.runtimeClass,
-          i5.fromCatalyst(expr) :: Nil,
-          ObjectType(i6.runtimeClass)
-        )
-      },
-      toCatalyst = { expr: Expression =>
-        i5.toCatalyst(Invoke(expr, fieldName, jvmr))
-      }
-    )*/
 
     override def toString: String = s"ValueClassEncoder[${i6.runtimeClass.getName} wraps $jvmRepr]"
   }, Some(i5))

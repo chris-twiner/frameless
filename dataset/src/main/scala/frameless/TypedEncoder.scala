@@ -40,7 +40,7 @@ object InjectionCodecs {
 
   def wrap[A, B](injection: Injection[A,B]): () => Codec[A, B] =
     () =>
-      new Codec[A, B] {
+      new Codec[A, B] with Serializable {
         override def encode(in: A): B = injection.apply(in)
 
         override def decode(out: B): A = injection.invert(out)
