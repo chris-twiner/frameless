@@ -143,6 +143,12 @@ class TypedDataset[T] protected[frameless] (
     }
   }
 
+  /** Returns a new [[TypedDataset]] where each record has been mapped on to the specified type. */
+  def as[U]()(implicit as: As[T, U]): TypedDataset[U] = {
+    implicit val uencoder = as.encoder
+    TypedDataset.create(dataset.as[U](TypedExpressionEncoder[U]))
+  }
+
   /**
    * Returns a checkpointed version of this [[TypedDataset]]. Checkpointing can be used to truncate the
    * logical plan of this Dataset, which is especially useful in iterative algorithms where the
@@ -1651,20 +1657,6 @@ class TypedDataset[T] protected[frameless] (
 }
 
 object TypedDataset {
-
-  implicit class DatasetOps[T, TH <: HList](dataset: TypedDataset[T]){
-
-    /** Returns a new [[TypedDataset]] where each record has been mapped on to the specified type. */
-    def as[U](
-       )(implicit
-         as: As[T, U]
-    ): TypedDataset[U]  = {
-      implicit val enc = as.encoder
-      TypedDataset.create(dataset.dataset.as[U](TypedExpressionEncoder[U]))
-    }
-  }
-
-
   def create[A](
       data: Seq[A]
     )(implicit
