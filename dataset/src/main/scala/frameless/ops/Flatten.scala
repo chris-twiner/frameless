@@ -1,5 +1,6 @@
 package frameless.ops
-import shapeless.{::, Generic, HList, HNil, Lazy, syntax}
+import shapeless.ops.hlist.{Drop, Length, Take}
+import shapeless.{::, Generic, HList, HNil, Lazy, Nat, syntax}
 import syntax.std.tuple._
 
 /*
@@ -68,13 +69,17 @@ object Flatten extends LowPriFlattenedImplicits {
     FH <: HList,
     T <: HList,
     FT <: HList,
-    Out <: HList
+    Out <: HList,
+    LEN <: Nat
   ](
      implicit
      fh : Lazy[Aux[H, FH]],
      ft : Lazy[Aux[T, FT]],
-     ++ : Prepend.Aux[FH, FT, Out]/*,
-     rvp: ReversePrepend.Aux[FH, FT, Out]*/
+     ++ : Prepend.Aux[FH, FT, Out],
+     lenFH: Length.Aux[FH, LEN],
+     actualInt: shapeless.ops.nat.ToInt[LEN],
+     take: Take[Out, LEN#N],
+     drop: Drop[Out, LEN#N]
    ): Aux[H :: T, Out] =
     make( {
       case h :: t ⇒
@@ -86,10 +91,12 @@ object Flatten extends LowPriFlattenedImplicits {
       case list: Out ⇒
        // val list
         //rvp.a(list)
-          ???
-      /*FH#Out
-        fh.value.reverse(h.asInstanceOf[FH]) ::
-          ft.value.reverse(t.asInstanceOf[FT])*/
+        val size = actualInt
+        val hlist = take(list)
+        val rlist = drop(list)
+        val h = fh.value.reverse(hlist.asInstanceOf[FH])
+        val rest = ft.value.reverse(rlist.asInstanceOf[FT])
+        h :: rest
     })
 
   // Flatten a case-class directly

@@ -98,20 +98,22 @@ class AsTests extends TypedDatasetSuite {
     val afVal = ((1,"a"), 1.0f).flattenIt
     val bfVal = X2(X2(1,"a"), 1.0f).flattenIt
 
-    type Test[A,B] = Tuple2[A,B]
+    type Test[A,B] = X2[A,B]
 
-    val cci = implicitly[Flatten[Test[Int, String]]]
-    val cc = new Test(1, "a")
+    type TestType = Test[Test[Int, String], Test[Float, Test[String, Int]]]
+
+    val cci = implicitly[Flatten[TestType]]
+    val cc: TestType = new Test(new Test(1, "a"), new Test(1.0f, new Test("f", 0)))
 
     val cctohl = cci.apply(cc)
     val rev = cci.reverse(cctohl)
 
-    println(s"cctohl $cctohl  rev $rev")
-
+    println(s"cctohl $cctohl - rev $rev")
+/*
 
     // types are the same
-    //    val bofAfVal = bt.reverse(afVal.asInstanceOf[bt.Out])
-    //  val aofBfVal = at.reverse(bfVal.asInstanceOf[at.Out])
-    //println(s"bofAfVal $bofAfVal  -  aofBfVal $aofBfVal")
+    val bofAfVal = bt.reverse(afVal.asInstanceOf[bt.Out])
+    val aofBfVal = at.reverse(bfVal.asInstanceOf[at.Out])
+    println(s"bofAfVal $bofAfVal  -  aofBfVal $aofBfVal")*/
   }
 }
