@@ -110,11 +110,11 @@ object TypedEncoder {
 
   implicit val charEncoder: TypedEncoder[Char] = new TypedEncoder[Char] {
 
-    val charAsString: Injection[Char, String] =
-      new Injection[Char, String] {
-        def apply(a: Char): String = String.valueOf(a)
+    val charAsString: Injection[java.lang.Character, String] =
+      new Injection[java.lang.Character, String] {
+        def apply(a: java.lang.Character): String = String.valueOf(a)
 
-        def invert(b: String): Char = {
+        def invert(b: String): java.lang.Character = {
           require(b.length == 1)
           b.charAt(0)
         }
@@ -124,10 +124,10 @@ object TypedEncoder {
       FramelessInternals.objectTypeFor[java.lang.Character]
 
     override def agnosticEncoder: AgnosticEncoder[Char] =
-      TransformingEncoder[Char, String](
-        classTag,
+      TransformingEncoder[java.lang.Character, String](
+        implicitly[ClassTag[java.lang.Character]],
         StringEncoder,
-        InjectionCodecs.wrap(charAsString))
+        InjectionCodecs.wrap(charAsString)).asInstanceOf[AgnosticEncoder[Char]] // same types but code gen needs exact
 
     override def toString: String = s"CharEncoder"
   }
