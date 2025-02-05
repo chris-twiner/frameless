@@ -8,11 +8,12 @@ import org.apache.spark.sql.catalyst.expressions.{Expression, NonSQLExpression}
 import org.apache.spark.sql.types.DataType
 
 private[frameless] case class Lit[T](
-    dataType: DataType,
-    nullable: Boolean,
-    show: () => String,
-    catalystExpr: Expression, // must be a generated Expression from a literal TypedEncoder's toCatalyst function
-    toCatalyst: TypedEncoder[T]
+                                      dataType: DataType,
+                                      nullable: Boolean,
+                                      show: () => String,
+                                      catalystExpr: Expression, // must be a generated Expression from a literal TypedEncoder's toCatalyst function
+                                      responseToCatalyst: TypedEncoder[T],
+                                      responseExprEnc: ExpressionEncoder[T]
 ) extends Expression with NonSQLExpression with CatalystConverter[T] with CodegenFallback {
   override def toString: String = s"FramelessLit(${show()})"
 

@@ -376,7 +376,7 @@ class SelectTests extends TypedDatasetSuite {
     val e = TypedDataset.create[Foo](Foo(1) :: Nil)
     val t: TypedDataset[(Int, Int)] = e.select(e.col('i) * 2, e.col('i))
     assert(t.select(t.col('_1)).collect().run().toList === List(2))
-    // Issue #54
+    // Issue #54 TODO - why is it not actually transformed?  AsTests worked
     val fooT = t.select(t.col('_1)).deserialized.map(x => Tuple1.apply(x)).as[Foo]
     assert(fooT.select(fooT('i)).collect().run().toList === List(2))
   }

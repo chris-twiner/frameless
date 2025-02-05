@@ -1,10 +1,11 @@
 package frameless
 package functions
 
+import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoders, ExpressionEncoder}
 import org.scalacheck.Prop
 import org.scalacheck.Prop._
 
-import scala.collection.immutable.{ ListSet, TreeSet }
+import scala.collection.immutable.{ListSet, TreeSet}
 
 class UdfTests extends TypedDatasetSuite {
 
@@ -42,7 +43,7 @@ class UdfTests extends TypedDatasetSuite {
       check(forAll(prop[X1[Option[Int]], X1[Option[Int]]] _))
 
       // TODO doesn't work for the same reason as `collect`
-      // check(forAll(prop[X1[Option[X1[Int]]], X1[Option[X1[Option[Int]]]]] _))
+      check(forAll(prop[X1[Option[X1[Int]]], X1[Option[X1[Option[Int]]]]] _))
 
       // Vector/List isn't supported by MapObjects, not all collections are equal see #804
       check(forAll(prop[Option[Seq[String]], Option[Seq[String]]] _))
@@ -93,6 +94,16 @@ class UdfTests extends TypedDatasetSuite {
 
         (dataset21 ?= d) && (dataset22 ?= d)
       }
+/*
+      val typedEncoder = implicitly[TypedEncoder[X3U[Int, String, Boolean]]]
+
+      val enc = ExpressionEncoder(typedEncoder.agnosticEncoder).resolveAndBind()
+
+      val a = X3U(1, "2", (), true)
+      val to = enc.createSerializer().apply(a)
+      val from = enc.createDeserializer().apply(to)
+*/
+      println("")
 
       check(forAll(prop[Int, Int, Int] _))
       check(forAll(prop[String, Int, Int] _))

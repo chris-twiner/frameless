@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers
 
 final class RecordEncoderTests extends TypedDatasetSuite with Matchers {
   test("Unable to encode products made from units only") {
-    illTyped("TypedEncoder[UnitsOnly]")
+    //illTyped("TypedEncoder[UnitsOnly]")  need to derive for them to create a null field
   }
 
   test("Dropping fields") {

@@ -39,7 +39,14 @@ object X3 {
     Ordering.Tuple3[A, B, C].on(x => (x.a, x.b, x.c))
 }
 
-case class X3U[A, B, C](a: A, b: B, u: Unit, c: C)
+case class X3U[A, B, C](a: A, b: B, u: Unit, c: C){
+  /**
+   * needed for AgnosticEncoders, not a big issue for most consumers
+   * Unit/void is not supported by most of spark internals for either Codec's or auto NullType => Unit conversions
+   * newInstance / invoke lookup does not work.
+   */
+  def this(a: A, b: B, c: C) = this(a,b,(),c)
+}
 
 object X3U {
   implicit def arbitrary[A: Arbitrary, B: Arbitrary, C: Arbitrary]: Arbitrary[X3U[A, B, C]] =

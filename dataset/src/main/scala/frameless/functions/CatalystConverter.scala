@@ -8,24 +8,23 @@ import org.apache.spark.sql.types.DataType
 
 trait CatalystConverter[T] {
   def dataType: DataType
-  def toCatalyst: TypedEncoder[T]
+  def responseToCatalyst: TypedEncoder[T]
 
-  lazy val typedEnc =
-    ExpressionEncoder(TypedExpressionEncoder[T](toCatalyst))
+  def responseExprEnc: ExpressionEncoder[T]
 
   lazy val isSerializedAsStructForTopLevel =
-    typedEnc.isSerializedAsStructForTopLevel
+    responseExprEnc.isSerializedAsStructForTopLevel
 
-  def fromCatalyst(catalyst: Any, expressionEncoder: ExpressionEncoder[Any], dataType: DataType): Any = {
+  def fromCatalyst(catalyst: Any, expressionEncoder: ExpressionEncoder[Any]): Any = {
     if (expressionEncoder.isSerializedAsStructForTopLevel)
       expressionEncoder.createDeserializer().apply(catalyst.asInstanceOf[InternalRow])
     else
-      CatalystTypeConverters.convertToScala(catalyst, dataType)
+      expressionEncoder.createDeserializer().apply(InternalRow(catalyst))
   }
 
   def processResponse(jvm: T): Any = {
 
-    val returnCatalyst = typedEnc.createSerializer().apply(jvm)
+    val returnCatalyst = responseExprEnc.createSerializer().apply(jvm)
     val retval =
       if (returnCatalyst == null)
         null
@@ -38,7 +37,7 @@ trait CatalystConverter[T] {
   }
 
   def responseCatalystConverter: Any => Any = {
-    val toRow = typedEnc.createSerializer().asInstanceOf[Any => Any]
+    val toRow = responseExprEnc.createSerializer().asInstanceOf[Any => Any]
     if (isSerializedAsStructForTopLevel) {
       value: Any =>
         if (value == null) null else toRow(value).asInstanceOf[InternalRow]
@@ -59,13 +58,13 @@ trait CatalystConverter[T] {
   // invocation logic taken from Spark4 ScalaUDF
 
   def responseInvocation(ctx: CodegenContext, actualFuncCall: String, retConverterTerm: String): (String, String) = {
-    val internalTpe = CodeGenerator.boxedType(toCatalyst.jvmRepr)
+    val internalTpe = CodeGenerator.boxedType(responseToCatalyst.jvmRepr)
     val internalTerm =
       ctx.addMutableState(internalTpe, ctx.freshName("internal"))
 
     // invocation logic taken from Spark4 ScalaUDF
     val funcInvocation =
-      if (toCatalyst.agnosticEncoder.isPrimitive
+      if (responseToCatalyst.agnosticEncoder.isPrimitive
         // If the output is nullable, the returned value must be unwrapped from the Option
         && !nullable) {
         s"$internalTerm = ($internalTpe)$actualFuncCall;"

@@ -15,7 +15,7 @@ import shapeless.ops.hlist.IsHCons
 import com.sparkutils.shim.expressions.{ExternalMapToCatalyst7 => ExternalMapToCatalyst, MapObjects5 => MapObjects, UnwrapOption2 => UnwrapOption, WrapOption2 => WrapOption}
 import frameless.{reflection => ScalaReflection}
 import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{ArrayEncoder, BinaryEncoder, DEFAULT_JAVA_DECIMAL_ENCODER, DEFAULT_SCALA_DECIMAL_ENCODER, IterableEncoder, JavaBigIntEncoder, MapEncoder, OptionEncoder, PrimitiveBooleanEncoder, PrimitiveByteEncoder, PrimitiveDoubleEncoder, PrimitiveFloatEncoder, PrimitiveIntEncoder, PrimitiveLongEncoder, PrimitiveShortEncoder, STRICT_DATE_ENCODER, STRICT_INSTANT_ENCODER, STRICT_TIMESTAMP_ENCODER, ScalaBigIntEncoder, ScalaDecimalEncoder, StringEncoder, TimestampEncoder, TransformingEncoder, UDTEncoder}
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{ArrayEncoder, BinaryEncoder, DEFAULT_JAVA_DECIMAL_ENCODER, DEFAULT_SCALA_DECIMAL_ENCODER, IterableEncoder, JavaBigIntEncoder, MapEncoder, NullEncoder, OptionEncoder, PrimitiveBooleanEncoder, PrimitiveByteEncoder, PrimitiveDoubleEncoder, PrimitiveFloatEncoder, PrimitiveIntEncoder, PrimitiveLongEncoder, PrimitiveShortEncoder, STRICT_DATE_ENCODER, STRICT_INSTANT_ENCODER, STRICT_TIMESTAMP_ENCODER, ScalaBigIntEncoder, ScalaDecimalEncoder, StringEncoder, TimestampEncoder, TransformingEncoder, UDTEncoder}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.{instantToMicros, microsToInstant}
 import org.apache.spark.sql.shim.{Invoke5 => Invoke, NewInstance4 => NewInstance, StaticInvoke4 => StaticInvoke}
 
@@ -234,7 +234,7 @@ object TypedEncoder {
       override def jvmRepr: DataType = ScalaReflection.dataTypeFor[SQLTimestamp]
 
       val sqlTimestampAsLong: Injection[SQLTimestamp, java.sql.Timestamp] =
-        new Injection[SQLTimestamp, java.sql.Timestamp]{
+        new Injection[SQLTimestamp, java.sql.Timestamp] with Serializable{
           def apply(a: SQLTimestamp): java.sql.Timestamp = Timestamp.from(microsToInstant(a.us))
 
           def invert(b: java.sql.Timestamp): SQLTimestamp = SQLTimestamp(instantToMicros(b.toInstant))
@@ -243,8 +243,9 @@ object TypedEncoder {
       override def agnosticEncoder: AgnosticEncoder[SQLTimestamp] =
         TransformingEncoder[SQLTimestamp, java.sql.Timestamp](
           classTag,
-          TimestampEncoder(false),
-          InjectionCodecs.wrap(sqlTimestampAsLong))
+          TimestampEncoder(true),
+          InjectionCodecs.wrap(sqlTimestampAsLong)
+        )
 
       override def toString: String = s"SQLTimestampEncoder"
     }
@@ -317,6 +318,7 @@ object TypedEncoder {
    */
   trait CollectionConversion[F[_], C[_], Y] extends Serializable {
     def convert(c: F[Y]): C[Y]
+    def reverse(c: C[Y]): F[Y]
   }
 
   object CollectionConversion {
@@ -329,18 +331,26 @@ object TypedEncoder {
           case _: Stream[Y] @unchecked => c.toVector.toSeq
           case _                       => c
         }
+
+      override def reverse(c: Seq[Y]): Seq[Y] = c
     }
 
     implicit def seqToVector[Y] = new CollectionConversion[Seq, Vector, Y] {
       override def convert(c: Seq[Y]): Vector[Y] = c.toVector
+
+      override def reverse(c: Vector[Y]): Seq[Y] = c
     }
 
     implicit def seqToList[Y] = new CollectionConversion[Seq, List, Y] {
       override def convert(c: Seq[Y]): List[Y] = c.toList
+
+      override def reverse(c: List[Y]): Seq[Y] = c
     }
 
     implicit def setToSet[Y] = new CollectionConversion[Set, Set, Y] {
       override def convert(c: Set[Y]): Set[Y] = c
+
+      override def reverse(c: Set[Y]): Set[Y] = c
     }
 
     implicit def setToTreeSet[Y](
@@ -350,12 +360,16 @@ object TypedEncoder {
 
       override def convert(c: Set[Y]): TreeSet[Y] =
         TreeSet.newBuilder.++=(c).result()
+
+      override def reverse(c: TreeSet[Y]): Set[Y] = c
     }
 
     implicit def setToListSet[Y] = new CollectionConversion[Set, ListSet, Y] {
 
       override def convert(c: Set[Y]): ListSet[Y] =
         ListSet.newBuilder.++=(c).result()
+
+      override def reverse(c: ListSet[Y]): Set[Y] = c
     }
   }
 
@@ -377,54 +391,28 @@ object TypedEncoder {
       implicit
       i0: Lazy[RecordFieldEncoder[T]],
       i1: ClassTag[C[T]],
-      i2: CollectionConversion[O, C, T]
+      i2: CollectionConversion[O, C, T],
+      i3: ClassTag[O[T]]
     ): TypedEncoder[C[T]] = new TypedEncoder[C[T]] {
     private lazy val encodeT = i0.value.encoder
 
     override def jvmRepr: DataType = FramelessInternals.objectTypeFor[C[T]](i1)
-/*
-    def catalystRepr: DataType =
-      ArrayType(encodeT.catalystRepr, encodeT.nullable)
 
-    def toCatalyst(path: Expression): Expression = {
-      val enc = i0.value
-
-      if (ScalaReflection.isNativeType(enc.jvmRepr)) {
-        NewInstance(classOf[GenericArrayData], path :: Nil, catalystRepr)
-      } else {
-        // converts to Seq, both Set and Seq handling must convert to Seq first
-        MapObjects(
-          enc.toCatalyst,
-          SeqCaster(path),
-          enc.jvmRepr,
-          encodeT.nullable
-        )
-      }
-    }
-
-    def fromCatalyst(path: Expression): Expression =
-      CollectionCaster[O, C, T](
-        MapObjects(
-          i0.value.fromCatalyst,
-          path,
-          encodeT.catalystRepr,
-          encodeT.nullable,
-          Some(i1.runtimeClass) // This will cause MapObjects to build a collection of type C[_] directly when compiling
-        ),
-        implicitly[CollectionConversion[O, C, T]]
-      ) // This will convert Seq to the appropriate C[_] when eval'ing.
-
-    override def toString: String = s"collectionEncoder($jvmRepr)" */
-
-    /**
-     * Create the underlying AgnosticEncoder
-     */
     override def agnosticEncoder: AgnosticEncoder[C[T]] =
-      IterableEncoder(
-        ClassTag(i1.runtimeClass),
-        encodeT.agnosticEncoder,
-        encodeT.nullable,
-        lenientSerialization = false).asInstanceOf[AgnosticEncoder[C[T]]] // only C is provided
+      TransformingEncoder(
+        classTag,
+        IterableEncoder(
+          i3, // we need the base supported type either Seq or Set, TreeSet or any other builders will fail
+          encodeT.agnosticEncoder,
+          encodeT.nullable,
+          lenientSerialization = false),
+        () => new Codec[C[T], O[T]] {
+
+          override def decode(in: O[T]): C[T] = i2.convert(in)
+
+          override def encode(out: C[T]): O[T] = i2.reverse(out)
+        }
+      )
 
     override def toString: String = s"CollectionEncoder[$jvmRepr]"
   }

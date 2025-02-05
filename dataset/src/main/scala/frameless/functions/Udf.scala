@@ -139,29 +139,30 @@ trait Udf {
  */
 // Possibly add UserDefinedExpression trait to stop the functions being registered and used as aggregates
 case class FramelessUdf[T, R](
-    function: AnyRef,
-    encoders: Seq[TypedEncoder[_]],
-    children: Seq[Expression],
-    toCatalyst: TypedEncoder[R],
-    evalFunction: Seq[Any] => Any)
+                               function: AnyRef,
+                               encoders: Seq[ExpressionEncoder[_]],
+                               children: Seq[Expression],
+                               responseExprEnc: ExpressionEncoder[R],
+                               responseToCatalyst: TypedEncoder[R],
+                               evalFunction: Seq[Any] => Any)
     extends Expression
-    with NonSQLExpression with CatalystConverter[R] {
+    with NonSQLExpression with CatalystConverter[R] with CodegenFallback {
 
-  override def nullable: Boolean = toCatalyst.nullable
+  override def nullable: Boolean = responseToCatalyst.nullable
 
   override def toString: String = s"FramelessUdf(${children.mkString(", ")})"
 
-  lazy val pairs = children.zip(encoders.map(e => ExpressionEncoder(e.agnosticEncoder)))
+  lazy val pairs = children.zip(encoders)
 
   def eval(input: InternalRow): Any = {
-    val jvmTypes = pairs.map( p => fromCatalyst(p._1.eval(input), p._2.asInstanceOf[ExpressionEncoder[Any]], p._1.dataType))
+    val jvmTypes = pairs.map( p => fromCatalyst(p._1.eval(input), p._2.asInstanceOf[ExpressionEncoder[Any]]))
 
     val returnJvm = evalFunction(jvmTypes).asInstanceOf[R]
     processResponse(returnJvm)
   }
 
-  def dataType: DataType = toCatalyst.catalystRepr
-
+  def dataType: DataType = responseToCatalyst.catalystRepr
+/*
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     val retConverterTerm = responseConversionTerm(ctx)
     ctx.references += this
@@ -183,7 +184,7 @@ case class FramelessUdf[T, R](
       .map {
         case (encoder, child) =>
           val eval = child.genCode(ctx)
-          val codeTpe = CodeGenerator.boxedType(encoder.jvmRepr)
+          val codeTpe = CodeGenerator.boxedType(responseToCatalyst.jvmRepr)
           val argTerm = ctx.freshName("arg")
           val convert =
             s"${eval.code}\n$codeTpe $argTerm = ${eval.isNull} ? (($codeTpe)null) : (($codeTpe)(${eval.value}));"
@@ -218,7 +219,7 @@ case class FramelessUdf[T, R](
       """
     )
   }
-
+*/
   protected def withNewChildrenInternal(
       newChildren: IndexedSeq[Expression]
     ): Expression = copy(children = newChildren)
@@ -269,11 +270,12 @@ object FramelessUdf {
       cols: Seq[UntypedExpression[T]],
       rencoder: TypedEncoder[R],
       evalFunction: Seq[Any] => Any
-    ): FramelessUdf[T, R] = FramelessUdf(
+    ): FramelessUdf[T, R] = new FramelessUdf(
     function = function,
-    encoders = cols.map(_.uencoder).toList,
+    encoders = cols.map(e => ExpressionEncoder(e.uencoder.agnosticEncoder).resolveAndBind()).toList,
     children = cols.map(_.expr).toList,
-    toCatalyst = rencoder,
+    responseExprEnc = ExpressionEncoder(rencoder.agnosticEncoder).resolveAndBind(),
+    responseToCatalyst = rencoder,
     evalFunction = evalFunction
   )
 }

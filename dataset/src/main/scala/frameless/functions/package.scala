@@ -1,12 +1,13 @@
 package frameless
 
-import frameless.{ reflection => ScalaReflection }
-import scala.reflect.ClassTag
+import frameless.{reflection => ScalaReflection}
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 
+import scala.reflect.ClassTag
 import shapeless._
 import shapeless.labelled.FieldType
 import shapeless.ops.hlist.IsHCons
-import shapeless.ops.record.{ Keys, Values }
+import shapeless.ops.record.{Keys, Values}
 import org.apache.spark.sql.catalyst.expressions.Literal
 
 package object functions extends Udf with UnaryFunctions {
@@ -60,7 +61,8 @@ package object functions extends Udf with UnaryFunctions {
           nullable = encoder.nullable,
           show = () => value.toString,
           catalystExpr = expr,
-          toCatalyst = encoder
+          responseToCatalyst = encoder,
+          responseExprEnc = ExpressionEncoder(encoder.agnosticEncoder)
         )
       )
     }
@@ -112,7 +114,8 @@ package object functions extends Udf with UnaryFunctions {
         nullable = i7.nullable,
         show = () => value.toString,
         catalystExpr = expr,//i7.toCatalyst(expr)
-        toCatalyst = i7
+        responseToCatalyst = i7,
+        responseExprEnc = ExpressionEncoder(i7.agnosticEncoder)
       )
     )
   }
@@ -168,7 +171,8 @@ package object functions extends Udf with UnaryFunctions {
         nullable = true,
         show = () => value.toString,
         catalystExpr = expr,//i7.toCatalyst(expr)
-        toCatalyst = i7
+        responseToCatalyst = i7,
+        responseExprEnc = ExpressionEncoder(i7.agnosticEncoder)
       )
     )
   }

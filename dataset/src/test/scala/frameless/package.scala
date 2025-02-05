@@ -1,10 +1,12 @@
 import java.time.format.DateTimeFormatter
-import java.time.{ LocalDateTime => JavaLocalDateTime }
+import java.time.{LocalDateTime => JavaLocalDateTime}
 import org.apache.spark.sql.catalyst.expressions.CodegenObjectFactoryMode
+import org.apache.spark.sql.catalyst.util.DateTimeConstants.MICROS_PER_SECOND
+import org.apache.spark.sql.catalyst.util.DateTimeUtils.{instantToMicros, microsToInstant}
 import org.apache.spark.sql.internal.SQLConf
-import org.scalacheck.{ Arbitrary, Cogen, Gen }
+import org.scalacheck.{Arbitrary, Cogen, Gen}
 
-import scala.collection.immutable.{ ListSet, TreeSet }
+import scala.collection.immutable.{ListSet, TreeSet}
 
 package object frameless {
 
@@ -26,7 +28,11 @@ package object frameless {
   }
 
   implicit val arbSqlTimestamp = Arbitrary {
-    Arbitrary.arbitrary[Long].map(SQLTimestamp)
+    def safe(micros: Long)  = {
+      // anything larger can cause overflows on spark 4 preview
+      instantToMicros(microsToInstant(micros)) / 2
+    }
+    Arbitrary.arbitrary[Long].map(l => safe(l)).map(SQLTimestamp)
   }
 
   implicit def arbTuple1[A: Arbitrary] = Arbitrary {
