@@ -5,6 +5,8 @@ import org.scalacheck.Prop._
 import shapeless.test.illTyped
 import scala.reflect.ClassTag
 
+case class FooI(i: Int)
+
 class SelectTests extends TypedDatasetSuite {
   test("select('a) FROM abcd") {
     def prop[A, B, C, D](data: Vector[X4[A, B, C, D]])(
@@ -372,12 +374,13 @@ class SelectTests extends TypedDatasetSuite {
   }
 
   test("tests to cover problematic dataframe column names during projections") {
-    case class Foo(i: Int)
-    val e = TypedDataset.create[Foo](Foo(1) :: Nil)
+
+    val e = TypedDataset.create[FooI](FooI(1) :: Nil)
     val t: TypedDataset[(Int, Int)] = e.select(e.col('i) * 2, e.col('i))
     assert(t.select(t.col('_1)).collect().run().toList === List(2))
-    // Issue #54 TODO - why is it not actually transformed?  AsTests worked
-    val fooT = t.select(t.col('_1)).deserialized.map(x => Tuple1.apply(x)).as[Foo]
+    // Issue #54
+    implicit val fooE = implicitly[TypedEncoder[FooI]]
+    val fooT = t.select(t.col('_1)).deserialized.map(x => Tuple1.apply(x)).as[FooI]
     assert(fooT.select(fooT('i)).collect().run().toList === List(2))
   }
 

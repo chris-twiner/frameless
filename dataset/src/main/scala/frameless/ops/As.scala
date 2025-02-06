@@ -3,15 +3,48 @@ package ops
 
 import frameless.ops.As.Equiv
 import frameless.ops.Flatten.Aux
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.TransformingEncoder
+import org.apache.spark.sql.{Column, Dataset}
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, ProductEncoder, RowEncoder, TransformingEncoder}
 import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
+import org.apache.spark.sql.types.Metadata
 import shapeless.ops.hlist.Align
-import shapeless.{::, Generic, HList, HNil, Lazy}
+import shapeless.{::, Generic, HList, HNil, LabelledGeneric, Lazy}
 
 import scala.reflect.ClassTag
 
 /** Evidence for correctness of `TypedDataset[T].as[U]` */
-class As[T, U] private (implicit val encoder: TypedEncoder[U])
+class As[T, U] private (val transformingEncoder: TypedEncoder[U], val resultingEncoder: TypedEncoder[U], val originalEncoder: TypedEncoder[T]) {
+
+  /**
+   * Without a projection the types may convert properly but the column names will reflect the previous products
+   * The encoders are traversed across fields
+   *
+   * @return
+   */
+  def asExpressions(dataset: Dataset[T]): Seq[Column] = {
+    def mapFields(fromFields: Seq[EncoderField], toFields: Seq[EncoderField]) = {
+      fromFields.zip(toFields).map {
+        case (EncoderField(fromName, fromEnc, _, _, _, _), EncoderField(toName, toEnc, _, _, _, _)) =>
+          dataset.col(fromName).as(toName).cast(toEnc.dataType)
+      }
+    }
+
+    (originalEncoder.agnosticEncoder: AgnosticEncoder[_], resultingEncoder.agnosticEncoder: AgnosticEncoder[_]) match {
+      case (ProductEncoder(_, fromFields, _), ProductEncoder(_, toFields, _)) =>
+        mapFields(fromFields, toFields)
+
+      case (RowEncoder(fromFields), ProductEncoder(_, toFields, _)) =>
+        mapFields(fromFields, toFields)
+
+      case (ProductEncoder(_, fromFields, _), RowEncoder(toFields)) =>
+        mapFields(fromFields, toFields)
+
+      case _ =>
+        ???
+    }
+  }
+
+}
 
 trait Convertible[A, B] extends Codec[A,B] {
   type Intermediate <: HList
@@ -48,10 +81,11 @@ object As extends LowPriorityAs {
   implicit def deriveAs[A, B]
     (implicit
      i0: TypedEncoder[A],
+     i1: TypedEncoder[B],
      convertible: Convertible[A, B],
      classTagB: ClassTag[B]
     ): As[A, B] = {
-    implicit val encB = new TypedEncoder[B] {
+    val encB = new TypedEncoder[B] {
       val provider = () => new Codec[B, A] with Serializable {
 
         override def encode(in: B): A = convertible.decode(in)
@@ -65,7 +99,7 @@ object As extends LowPriorityAs {
           i0.agnosticEncoder,
           provider)
     }
-    new As[A, B]
+    new As[A, B](encB, i1, i0)
   }
 
 }
@@ -86,5 +120,4 @@ trait LowPriorityAs {
       i1: Generic.Aux[B, S],
       i2: Lazy[Equiv[R, S]]
     ): Equiv[A, B] = new Equiv[A, B]("generic")
-
 }

@@ -145,8 +145,9 @@ class TypedDataset[T] protected[frameless] (
 
   /** Returns a new [[TypedDataset]] where each record has been mapped on to the specified type. */
   def as[U]()(implicit as: As[T, U]): TypedDataset[U] = {
-    implicit val uencoder = as.encoder
-    TypedDataset.create(dataset.as[U](TypedExpressionEncoder[U]))
+    implicit val uencoder = as.resultingEncoder
+    val renames = as.asExpressions(dataset)
+    TypedDataset.create(dataset.select(renames: _*).as[U](TypedExpressionEncoder[U]))
   }
 
   /**

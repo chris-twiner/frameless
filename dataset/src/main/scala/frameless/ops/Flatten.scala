@@ -108,7 +108,7 @@ object Flatten extends LowPriFlattenedImplicits {
     make({
       cc ⇒
         flat.value(
-          gen.to(cc)
+          gen.to(cc.t)
         )
     },{
       cc ⇒
