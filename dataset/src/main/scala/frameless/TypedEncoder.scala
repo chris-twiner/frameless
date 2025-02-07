@@ -58,9 +58,9 @@ object InjectionCodecs {
           op(tEnc.
             codecProvider().asInstanceOf[Codec[_, _]])
 
-       recordFieldEncoder.valueClassUnderlying.fold[_ => Any]((a: Any) => a)(_ => {
+        recordFieldEncoder.valueClassUnderlying.fold[_ => Any]((a: Any) => a)(_ => {
           a => dec(a)
-       }).asInstanceOf[A => B]
+        }).asInstanceOf[A => B]
       case _ => a => a.asInstanceOf[B]
     }
   }
@@ -458,63 +458,10 @@ object TypedEncoder {
           classTag.asInstanceOf[ClassTag[Map[_,_]]],
           encodeA.valueClassUnderlying.fold[AgnosticEncoder[A]](encodeA.encoder.agnosticEncoder)(_.agnosticEncoder.asInstanceOf[AgnosticEncoder[A]]),
           encodeB.valueClassUnderlying.fold[AgnosticEncoder[B]](encodeB.encoder.agnosticEncoder)(_.agnosticEncoder.asInstanceOf[AgnosticEncoder[B]]),
-          valueContainsNull = false),
+          valueContainsNull = encodeB.encoder.nullable),
         provider
       )
     }
-    /*
-        lazy val catalystRepr: DataType =
-          MapType(encodeA.catalystRepr, encodeB.catalystRepr, encodeB.nullable)
-
-        def fromCatalyst(path: Expression): Expression = {
-          val keyArrayType = ArrayType(encodeA.catalystRepr, containsNull = false)
-
-          val keyData = Invoke(
-            MapObjects(
-              i0.value.fromCatalyst,
-              Invoke(path, "keyArray", keyArrayType),
-              encodeA.catalystRepr
-            ),
-            "array",
-            FramelessInternals.objectTypeFor[Array[Any]]
-          )
-
-          val valueArrayType = ArrayType(encodeB.catalystRepr, encodeB.nullable)
-
-          val valueData = Invoke(
-            MapObjects(
-              i1.value.fromCatalyst,
-              Invoke(path, "valueArray", valueArrayType),
-              encodeB.catalystRepr
-            ),
-            "array",
-            FramelessInternals.objectTypeFor[Array[Any]]
-          )
-
-          StaticInvoke(
-            ArrayBasedMapData.getClass,
-            jvmRepr,
-            "toScalaMap",
-            keyData :: valueData :: Nil
-          )
-        }
-
-        def toCatalyst(path: Expression): Expression = {
-          val encA = i0.value
-          val encB = i1.value
-
-          ExternalMapToCatalyst(
-            path,
-            encA.jvmRepr,
-            encA.toCatalyst,
-            false,
-            encB.jvmRepr,
-            encB.toCatalyst,
-            encodeB.nullable
-          )
-        }
-
-        override def toString = s"mapEncoder($jvmRepr)"*/
 
     override def toString: String = s"MapEncoder[$jvmRepr]"
   }
@@ -524,79 +471,10 @@ object TypedEncoder {
       underlying: TypedEncoder[A]
     ): TypedEncoder[Option[A]] =
     new TypedEncoder[Option[A]] {
-
       override def nullable: Boolean = true
 
       override def jvmRepr: DataType =
         FramelessInternals.objectTypeFor[Option[A]](classTag)
-/*
-      def catalystRepr: DataType = underlying.catalystRepr
-
-      def toCatalyst(path: Expression): Expression = {
-        // for primitive types we must manually unbox the value of the object
-        underlying.jvmRepr match {
-          case IntegerType =>
-            Invoke(
-              UnwrapOption(
-                ScalaReflection.dataTypeFor[java.lang.Integer],
-                path
-              ),
-              "intValue",
-              IntegerType
-            )
-
-          case LongType =>
-            Invoke(
-              UnwrapOption(ScalaReflection.dataTypeFor[java.lang.Long], path),
-              "longValue",
-              LongType
-            )
-
-          case DoubleType =>
-            Invoke(
-              UnwrapOption(ScalaReflection.dataTypeFor[java.lang.Double], path),
-              "doubleValue",
-              DoubleType
-            )
-
-          case FloatType =>
-            Invoke(
-              UnwrapOption(ScalaReflection.dataTypeFor[java.lang.Float], path),
-              "floatValue",
-              FloatType
-            )
-
-          case ShortType =>
-            Invoke(
-              UnwrapOption(ScalaReflection.dataTypeFor[java.lang.Short], path),
-              "shortValue",
-              ShortType
-            )
-
-          case ByteType =>
-            Invoke(
-              UnwrapOption(ScalaReflection.dataTypeFor[java.lang.Byte], path),
-              "byteValue",
-              ByteType
-            )
-
-          case BooleanType =>
-            Invoke(
-              UnwrapOption(
-                ScalaReflection.dataTypeFor[java.lang.Boolean],
-                path
-              ),
-              "booleanValue",
-              BooleanType
-            )
-
-          case _ =>
-            underlying.toCatalyst(UnwrapOption(underlying.jvmRepr, path))
-        }
-      }
-
-      def fromCatalyst(path: Expression): Expression =
-        WrapOption(underlying.fromCatalyst(path), underlying.jvmRepr)*/
 
       /**
        * Create the underlying AgnosticEncoder

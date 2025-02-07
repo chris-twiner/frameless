@@ -1,7 +1,14 @@
 package frameless
 
+import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, IterableEncoder, PrimitiveIntEncoder, ProductEncoder, TransformingEncoder}
+import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, AgnosticEncoders, Codec}
+import org.apache.spark.sql.types.Metadata
 import org.scalacheck.Prop
 import org.scalacheck.Prop._
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
+
+import scala.reflect.ClassTag
 
 class AsTests extends TypedDatasetSuite {
   test("as[X2[A, B]]") {
@@ -43,11 +50,13 @@ class AsTests extends TypedDatasetSuite {
       dataset2 ?= data3
     }
 
-    //check(forAll(prop[String, Int, Int] _))
-    //check(forAll(prop[String, Int, String] _))
-    //check(forAll(prop[String, String, Int] _))
-    //check(forAll(prop[Long, Int, String] _))
-    //check(forAll(prop[Seq[Seq[Option[Seq[Long]]]], Seq[Int], Option[Seq[Option[Int]]]] _))
+    check(forAll(prop[String, Int, Int] _))
+    check(forAll(prop[String, Int, String] _))
+    check(forAll(prop[String, String, Int] _))
+    check(forAll(prop[Long, Int, String] _))
+    // both below fail as, although the derived types are correct for the cast, Spark is adding nullable to array
+    // and longs, this stops the casts.
+    check(forAll(prop[Seq[Seq[Option[Seq[Long]]]], Seq[Int], Option[Seq[Option[Int]]]] _))
     check(forAll(prop[Seq[Option[Seq[String]]], Seq[Int], Seq[Option[String]]] _))
   }
 }
