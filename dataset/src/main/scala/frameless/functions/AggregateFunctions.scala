@@ -83,13 +83,9 @@ trait AggregateFunctions {
       column: TypedColumn[T, A]
     )(implicit
       summable: CatalystSummable[A, Out],
-      oencoder: TypedEncoder[Out],
-      aencoder: TypedEncoder[A]
+      oencoder: TypedEncoder[Out]
     ): TypedAggregate[T, Out] = {
-    val zeroExpr = Literal.create(summable.zero, TypedEncoder[A].catalystRepr)
-    val sumExpr = expr(sparkFunctions.sum(column.untyped))
-    val sumOrZero = Coalesce(Seq(sumExpr, zeroExpr))
-
+    val sumOrZero = nullToZero(sparkFunctions.sum(column.untyped))
     new TypedAggregate[T, Out](sumOrZero)
   }
 
