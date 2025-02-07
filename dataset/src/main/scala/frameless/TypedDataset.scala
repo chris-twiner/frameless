@@ -131,14 +131,21 @@ class TypedDataset[T] protected[frameless] (
           (c, i) <- underlyingColumns.zipWithIndex
           if !c.uencoder.nullable
         } yield s"_${i + 1} is not null"
-      ).mkString(" or ")
+      ).mkString(" and ")
 
       val selected = dataset
         .toDF()
         .agg(cols.head, cols.tail: _*)
-        .as[Out](TypedExpressionEncoder[Out])
+
+      // spark4 really likes types correct, only select after filtering out rows
+      val filtered =
+        if (filterStr.isEmpty)
+          selected
+        else
+          selected.filter(filterStr)
+
       TypedDataset.create[Out](
-        if (filterStr.isEmpty) selected else selected.filter(filterStr)
+        filtered.as[Out](TypedExpressionEncoder[Out])
       )
     }
   }

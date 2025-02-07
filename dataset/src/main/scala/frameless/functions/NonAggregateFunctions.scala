@@ -654,9 +654,12 @@ trait NonAggregateFunctions {
   def factorial[T](
       column: AbstractTypedColumn[T, Long]
     )(implicit
-      i0: TypedEncoder[Long]
-    ): column.ThisType[T, Long] =
-    column.typed(sparkFunctions.factorial(column.untyped))
+      i0: TypedEncoder[Long],
+      i1: CatalystZero[Long]
+    ): column.ThisType[T, Long] = {
+    val factOrZero = nullToZero(sparkFunctions.factorial(column.untyped))
+    column.typed(factOrZero)
+  }
 
   /**
    * Non-Aggregate function: Computes bitwise NOT.

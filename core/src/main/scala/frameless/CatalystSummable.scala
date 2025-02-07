@@ -13,9 +13,7 @@ import scala.annotation.implicitNotFound
   * - Short      -> Long
   */
 @implicitNotFound("Cannot compute sum of type ${In}.")
-trait CatalystSummable[In, Out] {
-  def zero: In
-}
+trait CatalystSummable[In, Out] extends CatalystZero[In]
 
 object CatalystSummable {
   def apply[In, Out](zero: In): CatalystSummable[In, Out] = {

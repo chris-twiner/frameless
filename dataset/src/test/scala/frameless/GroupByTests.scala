@@ -120,7 +120,9 @@ class GroupByTests extends TypedDatasetSuite {
       val listMinC = if(data.isEmpty) implicitly[Numeric[C]].fromInt(0) else data.map(_.c).min
       val listMaxD = if(data.isEmpty) implicitly[Numeric[D]].fromInt(0) else data.map(_.d).max
 
-      datasetSum ?= Vector(if (data.isEmpty) null else (listSumA, listSumB, listMinC, listMaxD))
+      datasetSum ?= {
+        if (data.isEmpty) Vector.empty else Vector((listSumA, listSumB, listMinC, listMaxD))
+      }
     }
 
     check(forAll(prop[Long, Long, Long, Int] _))

@@ -1,6 +1,7 @@
 package frameless
 
 import frameless.{reflection => ScalaReflection}
+import org.apache.spark.sql.{Column, functions => sparkFunctions}
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 
 import scala.reflect.ClassTag
@@ -11,6 +12,18 @@ import shapeless.ops.record.{Keys, Values}
 import org.apache.spark.sql.catalyst.expressions.Literal
 
 package object functions extends Udf with UnaryFunctions {
+
+  /**
+   * provides a non-null expression from a nullable one
+   * @param nullable the expression which produces nulls
+   * @tparam T
+   * @return
+   */
+  def nullToZero[T: CatalystZero](nullable: Column): Column = {
+    val zeroExpr = sparkFunctions.lit(implicitly[CatalystZero[T]].zero)
+    val orZero = sparkFunctions.coalesce(nullable, zeroExpr)
+    orZero
+  }
 
   object aggregate extends AggregateFunctions
   object nonAggregate extends NonAggregateFunctions
