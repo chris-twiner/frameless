@@ -1,6 +1,8 @@
 package frameless
 
 import frameless.CollectTests.prop
+import frameless.InjectionCodecs.codec
+import org.apache.spark.sql.catalyst.encoders.Codec
 import org.scalacheck._
 import org.scalacheck.Prop._
 import shapeless.test.illTyped
@@ -80,6 +82,14 @@ object I {
   implicit def arbitrary[A: Arbitrary]: Arbitrary[I[A]] = Arbitrary(Arbitrary.arbitrary[A].map(I(_)))
 }
 
+case class C[A](value: A)
+
+object C {
+  implicit def injection[A]: () => Codec[C[A], A] = codec(_.value, C(_))
+  implicit def typedEncoder[A: TypedEncoder]: TypedEncoder[C[A]] = TypedEncoder.usingCodec[C[A], A]
+  implicit def arbitrary[A: Arbitrary]: Arbitrary[C[A]] = Arbitrary(Arbitrary.arbitrary[A].map(C(_)))
+}
+
 sealed trait Employee
 case object Casual extends Employee
 case object PartTime extends Employee
@@ -132,6 +142,7 @@ object Vehicle {
 }
 
 class InjectionTests extends TypedDatasetSuite {
+
   test("Injection based encoders") {
     check(forAll(prop[Country] _))
     check(forAll(prop[LocalDateTime] _))
@@ -162,6 +173,25 @@ class InjectionTests extends TypedDatasetSuite {
     assert(TypedEncoder[I[I[Int]]].catalystRepr == TypedEncoder[Int].catalystRepr)
 
     assert(TypedEncoder[I[Option[Int]]].nullable)
+  }
+
+  test("Codec based encoders") {
+    check(forAll(prop[C[Int]] _))
+    check(forAll(prop[C[Option[Int]]] _))
+    check(forAll(prop[C[C[Int]]] _))
+    check(forAll(prop[C[C[Option[Int]]]] _))
+
+    check(forAll(prop[C[X1[Int]]] _))
+    check(forAll(prop[C[C[X1[Int]]]] _))
+    check(forAll(prop[C[C[Option[X1[Int]]]]] _))
+
+    check(forAll(prop[Option[C[Int]]] _))
+    check(forAll(prop[Option[C[X1[Int]]]] _))
+
+    assert(TypedEncoder[C[Int]].catalystRepr == TypedEncoder[Int].catalystRepr)
+    assert(TypedEncoder[C[C[Int]]].catalystRepr == TypedEncoder[Int].catalystRepr)
+
+    assert(TypedEncoder[C[Option[Int]]].nullable)
   }
 
   test("TypedEncoder[Person] is ambiguous") {
@@ -283,6 +313,106 @@ class InjectionTests extends TypedDatasetSuite {
 
     val caught = intercept[IllegalArgumentException] {
       implicitly[Injection[Employee, String]].invert("cassual")
+    }
+
+    assert(
+      caught.getMessage ===
+        "Cannot construct a value of type CNil: cassual did not match data constructor names"
+    )
+  }
+
+
+  test("Resolve missing implicit by deriving Codec instance") {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    check(forAll(prop[X1[Employee]] _))
+    check(forAll(prop[X1[X1[Employee]]] _))
+    check(forAll(prop[X2[Employee, Employee]] _))
+    check(forAll(prop[Employee] _))
+
+    assert(TypedEncoder[Employee].catalystRepr == TypedEncoder[String].catalystRepr)
+  }
+
+  test("TypedEncoder[Maybe] cannot be derived by using Codec") {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    illTyped(
+      "implicitly[TypedEncoder[Maybe]]",
+      "could not find implicit value for parameter e.*"
+    )
+  }
+
+  test("Derive encoder for type with data constructors defined in the companion object using Codec") {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    check(forAll(prop[X1[Switch]] _))
+    check(forAll(prop[X1[X1[Switch]]] _))
+    check(forAll(prop[X2[Switch, Switch]] _))
+    check(forAll(prop[Switch] _))
+
+    assert(TypedEncoder[Switch].catalystRepr == TypedEncoder[String].catalystRepr)
+  }
+
+  test("Derive encoder for type with data constructors defined as parameterless case classes using Codec") {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    check(forAll(prop[X1[Pixel]] _))
+    check(forAll(prop[X1[X1[Pixel]]] _))
+    check(forAll(prop[X2[Pixel, Pixel]] _))
+    check(forAll(prop[Pixel] _))
+
+    assert(TypedEncoder[Pixel].catalystRepr == TypedEncoder[String].catalystRepr)
+  }
+
+  test("Derive encoder for phantom type using Codec") {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    check(forAll(prop[X1[Connection[Int]]] _))
+    check(forAll(prop[X1[X1[Connection[Int]]]] _))
+    check(forAll(prop[X2[Connection[Int], Connection[Int]]] _))
+    check(forAll(prop[Connection[Int]] _))
+
+    assert(TypedEncoder[Connection[Int]].catalystRepr == TypedEncoder[String].catalystRepr)
+  }
+
+  test("Derive encoder for ADT with abstract class as the base type using Codecs") {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    check(forAll(prop[X1[Vehicle]] _))
+    check(forAll(prop[X1[X1[Vehicle]]] _))
+    check(forAll(prop[X2[Vehicle, Vehicle]] _))
+    check(forAll(prop[Vehicle] _))
+
+    assert(TypedEncoder[Vehicle].catalystRepr == TypedEncoder[String].catalystRepr)
+  }
+
+  test("apply method of derived Injection instance produces the correct string using Codecs") {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    assert(implicitly[TypedInjection[Employee, String]].encode(Casual) === "Casual")
+    assert(implicitly[TypedInjection[Switch, String]].encode(Switch.On) === "On")
+    assert(implicitly[TypedInjection[Pixel, String]].encode(Blue()) === "Blue")
+    assert(implicitly[TypedInjection[Connection[Int], String]].encode(Open) === "Open")
+    assert(implicitly[TypedInjection[Vehicle, String]].encode(Bike) === "Bike")
+  }
+
+  test("invert method of derived Injection instance produces the correct value using Codecs") {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    assert(implicitly[TypedInjection[Employee, String]].decode("Casual") === Casual)
+    assert(implicitly[TypedInjection[Switch, String]].decode("On") === Switch.On)
+    assert(implicitly[TypedInjection[Pixel, String]].decode("Blue") === Blue())
+    assert(implicitly[TypedInjection[Connection[Int], String]].decode("Open") === Open)
+    assert(implicitly[TypedInjection[Vehicle, String]].decode("Bike") === Bike)
+  }
+
+  test(
+    "invert method of derived Injection instance should throw exception if string does not match data constructor names using Codecs"
+  ) {
+    import frameless.TypedEncoder.injections.CodecEnums._
+
+    val caught = intercept[IllegalArgumentException] {
+      implicitly[TypedInjection[Employee, String]].decode("cassual")
     }
 
     assert(
