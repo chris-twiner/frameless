@@ -920,7 +920,8 @@ class NonAggregateFunctionsTests extends TypedDatasetSuite {
     check(forAll(prop[Byte, Int] _))
     check(forAll(prop[Double, Double] _))
   }
-/*
+
+  /*
   test("atan2LitLeft") {
     val spark = session
     import spark.implicits._
@@ -1040,7 +1041,7 @@ class NonAggregateFunctionsTests extends TypedDatasetSuite {
     check(forAll(prop[Byte] _))
     check(forAll(prop[Double] _))
   }
-*/
+   */
   def mathProp[A: CatalystNumeric: TypedEncoder: Encoder](
       typedDS: TypedDataset[X1[A]]
     )(typedCol: TypedColumn[X1[A], Double],

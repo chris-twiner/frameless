@@ -1,11 +1,23 @@
 package frameless
 
-import com.sparkutils.shim.expressions.{CreateNamedStruct1 => CreateNamedStruct, GetStructField3 => GetStructField, UnwrapOption2 => UnwrapOption, WrapOption2 => WrapOption}
-import com.sparkutils.shim.{deriveUnitLiteral, ifIsNull}
-import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, ProductEncoder, TransformingEncoder}
-import org.apache.spark.sql.catalyst.expressions.{Expression, Literal}
-import org.apache.spark.sql.shim.{Invoke5 => Invoke, NewInstance4 => NewInstance}
+import com.sparkutils.shim.expressions.{
+  CreateNamedStruct1 => CreateNamedStruct,
+  GetStructField3 => GetStructField,
+  UnwrapOption2 => UnwrapOption,
+  WrapOption2 => WrapOption
+}
+import com.sparkutils.shim.{ deriveUnitLiteral, ifIsNull }
+import org.apache.spark.sql.catalyst.encoders.{ AgnosticEncoder, Codec }
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{
+  EncoderField,
+  ProductEncoder,
+  TransformingEncoder
+}
+import org.apache.spark.sql.catalyst.expressions.{ Expression, Literal }
+import org.apache.spark.sql.shim.{
+  Invoke5 => Invoke,
+  NewInstance4 => NewInstance
+}
 import org.apache.spark.sql.types._
 import shapeless._
 import shapeless.labelled.FieldType
@@ -14,7 +26,10 @@ import shapeless.ops.record.Keys
 
 import scala.reflect.ClassTag
 
-class RecordFieldEncoder[T](val encoder: TypedEncoder[T], val valueClassUnderlying: Option[TypedEncoder[_]] = None) extends Serializable
+class RecordFieldEncoder[T](
+    val encoder: TypedEncoder[T],
+    val valueClassUnderlying: Option[TypedEncoder[_]] = None)
+    extends Serializable
 
 case class RecordEncoderField(
     ordinal: Int,
@@ -58,7 +73,8 @@ object RecordEncoderFields {
       implicit
       key: Witness.Aux[K],
       e: RecordFieldEncoder[H]
-    ): RecordEncoderField = RecordEncoderField(0, key.value.name, e.encoder, e.valueClassUnderlying)
+    ): RecordEncoderField =
+    RecordEncoderField(0, key.value.name, e.encoder, e.valueClassUnderlying)
 }
 
 /**
@@ -153,14 +169,20 @@ class RecordEncoder[F, G <: HList, H <: HList](
     extends TypedEncoder[F] {
 
   override def agnosticEncoder: AgnosticEncoder[F] =
-      ProductEncoder[F](
-        classTag,
-        fields.value.value.map(f => EncoderField(
+    ProductEncoder[F](
+      classTag,
+      fields.value.value.map(f =>
+        EncoderField(
           f.name,
-          f.valueClassUnderlying.fold[AgnosticEncoder[_]](f.encoder.agnosticEncoder)(_.agnosticEncoder),
+          f.valueClassUnderlying.fold[AgnosticEncoder[_]](
+            f.encoder.agnosticEncoder
+          )(_.agnosticEncoder),
           f.encoder.nullable,
-          Metadata.empty) ),
-        None)
+          Metadata.empty
+        )
+      ),
+      None
+    )
 
   override def jvmRepr: DataType = FramelessInternals.objectTypeFor[F]
 
@@ -195,7 +217,7 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i8: ClassTag[V],
       i9: Generic.Aux[F, V :: HNil]
     ): RecordFieldEncoder[Option[F]] = {
-      new RecordFieldEncoder(TypedEncoder.optionEncoder(valueClass.encoder))
+    new RecordFieldEncoder(TypedEncoder.optionEncoder(valueClass.encoder))
 
   }
 
@@ -223,24 +245,31 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
       i6: ClassTag[F],
       i8: ClassTag[V],
       i9: Generic.Aux[F, V :: HNil]
-    ): RecordFieldEncoder[F] = new RecordFieldEncoder(new TypedEncoder[F]() {
-    override def nullable: Boolean = i5.nullable
-    override def agnosticEncoder: AgnosticEncoder[F] = {
+    ): RecordFieldEncoder[F] = new RecordFieldEncoder(
+    new TypedEncoder[F]() {
+      override def nullable: Boolean = i5.nullable
 
-      TransformingEncoder[F,V](i6,
-        i5.agnosticEncoder,
-        () => new Codec[F, V] {
-          override def encode(in: F): V = Generic[F].to(in).head
+      override def agnosticEncoder: AgnosticEncoder[F] = {
 
-          override def decode(out: V): F = i9.from(out :: HNil)
-        }
-      )
-    }
+        TransformingEncoder[F, V](
+          i6,
+          i5.agnosticEncoder,
+          () =>
+            new Codec[F, V] {
+              override def encode(in: F): V = Generic[F].to(in).head
 
-    override def jvmRepr: DataType = FramelessInternals.objectTypeFor[V](i8)
+              override def decode(out: V): F = i9.from(out :: HNil)
+            }
+        )
+      }
 
-    override def toString: String = s"ValueClassEncoder[${i6.runtimeClass.getName} wraps $jvmRepr]"
-  }, Some(i5))
+      override def jvmRepr: DataType = FramelessInternals.objectTypeFor[V](i8)
+
+      override def toString: String =
+        s"ValueClassEncoder[${i6.runtimeClass.getName} wraps $jvmRepr]"
+    },
+    Some(i5)
+  )
 }
 
 private[frameless] sealed trait RecordFieldEncoderLowPriority {
@@ -249,5 +278,5 @@ private[frameless] sealed trait RecordFieldEncoderLowPriority {
       implicit
       e: TypedEncoder[T]
     ): RecordFieldEncoder[T] =
-       new RecordFieldEncoder[T](e)
+    new RecordFieldEncoder[T](e)
 }

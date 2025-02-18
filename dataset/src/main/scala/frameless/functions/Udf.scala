@@ -1,11 +1,18 @@
 package frameless
 package functions
 
-import org.apache.spark.sql.catalyst.{InternalRow, SerializerBuildHelper}
-import org.apache.spark.sql.catalyst.expressions.{Expression, LeafExpression, NonSQLExpression}
+import org.apache.spark.sql.catalyst.{ InternalRow, SerializerBuildHelper }
+import org.apache.spark.sql.catalyst.expressions.{
+  Expression,
+  LeafExpression,
+  NonSQLExpression
+}
 import org.apache.spark.sql.catalyst.expressions.codegen._
 import Block._
-import org.apache.spark.sql.catalyst.CatalystTypeConverters.{createToCatalystConverter, isPrimitive}
+import org.apache.spark.sql.catalyst.CatalystTypeConverters.{
+  createToCatalystConverter,
+  isPrimitive
+}
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.types.DataType
 import shapeless.syntax.std.tuple._
@@ -139,14 +146,16 @@ trait Udf {
  */
 // Possibly add UserDefinedExpression trait to stop the functions being registered and used as aggregates
 case class FramelessUdf[T, R](
-                               function: AnyRef,
-                               encoders: Seq[ExpressionEncoder[_]],
-                               children: Seq[Expression],
-                               responseExprEnc: ExpressionEncoder[R],
-                               responseToCatalyst: TypedEncoder[R],
-                               evalFunction: Seq[Any] => Any)
+    function: AnyRef,
+    encoders: Seq[ExpressionEncoder[_]],
+    children: Seq[Expression],
+    responseExprEnc: ExpressionEncoder[R],
+    responseToCatalyst: TypedEncoder[R],
+    evalFunction: Seq[Any] => Any)
     extends Expression
-    with NonSQLExpression with CatalystConverter[R] with CodegenFallback {
+    with NonSQLExpression
+    with CatalystConverter[R]
+    with CodegenFallback {
 
   override def nullable: Boolean = responseToCatalyst.nullable
 
@@ -155,14 +164,17 @@ case class FramelessUdf[T, R](
   lazy val pairs = children.zip(encoders)
 
   def eval(input: InternalRow): Any = {
-    val jvmTypes = pairs.map( p => fromCatalyst(p._1.eval(input), p._2.asInstanceOf[ExpressionEncoder[Any]]))
+    val jvmTypes = pairs.map(p =>
+      fromCatalyst(p._1.eval(input), p._2.asInstanceOf[ExpressionEncoder[Any]])
+    )
 
     val returnJvm = evalFunction(jvmTypes).asInstanceOf[R]
     processResponse(returnJvm)
   }
 
   def dataType: DataType = responseToCatalyst.catalystRepr
-/*
+
+  /*
   override def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     val retConverterTerm = responseConversionTerm(ctx)
     ctx.references += this
@@ -206,7 +218,7 @@ case class FramelessUdf[T, R](
 
     val resultEval = typedEnc.createSerializer().
       .toCatalyst(internalExpr).genCode(ctx)
-*/
+   */
     ev.copy(
       code = code"""
       ${argsCode.mkString("\n")}
@@ -219,7 +231,7 @@ case class FramelessUdf[T, R](
       """
     )
   }
-*/
+   */
   protected def withNewChildrenInternal(
       newChildren: IndexedSeq[Expression]
     ): Expression = copy(children = newChildren)
@@ -272,9 +284,12 @@ object FramelessUdf {
       evalFunction: Seq[Any] => Any
     ): FramelessUdf[T, R] = new FramelessUdf(
     function = function,
-    encoders = cols.map(e => ExpressionEncoder(e.uencoder.agnosticEncoder).resolveAndBind()).toList,
+    encoders = cols
+      .map(e => ExpressionEncoder(e.uencoder.agnosticEncoder).resolveAndBind())
+      .toList,
     children = cols.map(_.expr).toList,
-    responseExprEnc = ExpressionEncoder(rencoder.agnosticEncoder).resolveAndBind(),
+    responseExprEnc =
+      ExpressionEncoder(rencoder.agnosticEncoder).resolveAndBind(),
     responseToCatalyst = rencoder,
     evalFunction = evalFunction
   )

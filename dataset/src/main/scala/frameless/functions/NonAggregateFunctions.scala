@@ -346,7 +346,8 @@ trait NonAggregateFunctions {
     r.typed(
       sparkFunctions.atan2(l.cast[Double].untyped, r.cast[Double].untyped)
     )
-/*
+
+  /*
   def atan2[B, T](
       l: Double,
       r: TypedColumn[T, B]
@@ -378,7 +379,7 @@ trait NonAggregateFunctions {
       i0: CatalystCast[A, Double]
     ): TypedAggregate[T, Double] =
     atan2(l, l.lit(r))
-*/
+   */
   /**
    * Non-Aggregate function: returns the square root value of a numeric column.
    *

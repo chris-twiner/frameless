@@ -1,14 +1,14 @@
 package frameless
 
-import frameless.{reflection => ScalaReflection}
-import org.apache.spark.sql.{Column, functions => sparkFunctions}
+import frameless.{ reflection => ScalaReflection }
+import org.apache.spark.sql.{ Column, functions => sparkFunctions }
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 
 import scala.reflect.ClassTag
 import shapeless._
 import shapeless.labelled.FieldType
 import shapeless.ops.hlist.IsHCons
-import shapeless.ops.record.{Keys, Values}
+import shapeless.ops.record.{ Keys, Values }
 import org.apache.spark.sql.catalyst.expressions.Literal
 
 package object functions extends Udf with UnaryFunctions {
@@ -110,7 +110,7 @@ package object functions extends Udf with UnaryFunctions {
       i8: ClassTag[A],
       i9: ClassTag[V],
       i10: Generic.Aux[A, V :: HNil]
-  ): TypedColumn[T, A] = {
+    ): TypedColumn[T, A] = {
     val expr = {
       val field: H = i1(i0.to(value))
       val v: V = i6.head(i4(field))
@@ -126,7 +126,7 @@ package object functions extends Udf with UnaryFunctions {
         dataType = i7.catalystRepr,
         nullable = i7.nullable,
         show = () => value.toString,
-        catalystExpr = expr,//i7.toCatalyst(expr)
+        catalystExpr = expr, // i7.toCatalyst(expr)
         responseToCatalyst = i7,
         responseExprEnc = ExpressionEncoder(i7.agnosticEncoder)
       )
@@ -183,7 +183,7 @@ package object functions extends Udf with UnaryFunctions {
         dataType = i7.catalystRepr,
         nullable = true,
         show = () => value.toString,
-        catalystExpr = expr,//i7.toCatalyst(expr)
+        catalystExpr = expr, // i7.toCatalyst(expr)
         responseToCatalyst = i7,
         responseExprEnc = ExpressionEncoder(i7.agnosticEncoder)
       )

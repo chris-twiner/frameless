@@ -1,9 +1,12 @@
 package frameless.functions
 
-import frameless.{TypedEncoder, TypedExpressionEncoder}
-import org.apache.spark.sql.catalyst.{CatalystTypeConverters, InternalRow}
+import frameless.{ TypedEncoder, TypedExpressionEncoder }
+import org.apache.spark.sql.catalyst.{ CatalystTypeConverters, InternalRow }
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.spark.sql.catalyst.expressions.codegen.{CodeGenerator, CodegenContext}
+import org.apache.spark.sql.catalyst.expressions.codegen.{
+  CodeGenerator,
+  CodegenContext
+}
 import org.apache.spark.sql.types.DataType
 
 trait CatalystConverter[T] {
@@ -15,9 +18,14 @@ trait CatalystConverter[T] {
   lazy val isSerializedAsStructForTopLevel =
     responseExprEnc.isSerializedAsStructForTopLevel
 
-  def fromCatalyst(catalyst: Any, expressionEncoder: ExpressionEncoder[Any]): Any = {
+  def fromCatalyst(
+      catalyst: Any,
+      expressionEncoder: ExpressionEncoder[Any]
+    ): Any = {
     if (expressionEncoder.isSerializedAsStructForTopLevel)
-      expressionEncoder.createDeserializer().apply(catalyst.asInstanceOf[InternalRow])
+      expressionEncoder
+        .createDeserializer()
+        .apply(catalyst.asInstanceOf[InternalRow])
     else
       expressionEncoder.createDeserializer().apply(InternalRow(catalyst))
   }
@@ -38,35 +46,44 @@ trait CatalystConverter[T] {
 
   def responseCatalystConverter: Any => Any = {
     val toRow = responseExprEnc.createSerializer().asInstanceOf[Any => Any]
-    if (isSerializedAsStructForTopLevel) {
-      value: Any =>
-        if (value == null) null else toRow(value).asInstanceOf[InternalRow]
-    } else {
-      value: Any =>
-        if (value == null) null else toRow(value).asInstanceOf[InternalRow].get(0, dataType)
+    if (isSerializedAsStructForTopLevel) { value: Any =>
+      if (value == null) null else toRow(value).asInstanceOf[InternalRow]
+    } else { value: Any =>
+      if (value == null) null
+      else toRow(value).asInstanceOf[InternalRow].get(0, dataType)
     }
   }
 
   // must be called before += this
   def responseConversionTerm(ctx: CodegenContext): String = {
     val retConverter = responseCatalystConverter
-    val retConverterTerm = ctx.addReferenceObj("retConverter", retConverter, classOf[Any => Any].getName)
+    val retConverterTerm = ctx.addReferenceObj(
+      "retConverter",
+      retConverter,
+      classOf[Any => Any].getName
+    )
     retConverterTerm
   }
 
   def nullable: Boolean
   // invocation logic taken from Spark4 ScalaUDF
 
-  def responseInvocation(ctx: CodegenContext, actualFuncCall: String, retConverterTerm: String): (String, String) = {
+  def responseInvocation(
+      ctx: CodegenContext,
+      actualFuncCall: String,
+      retConverterTerm: String
+    ): (String, String) = {
     val internalTpe = CodeGenerator.boxedType(responseToCatalyst.jvmRepr)
     val internalTerm =
       ctx.addMutableState(internalTpe, ctx.freshName("internal"))
 
     // invocation logic taken from Spark4 ScalaUDF
     val funcInvocation =
-      if (responseToCatalyst.agnosticEncoder.isPrimitive
+      if (
+        responseToCatalyst.agnosticEncoder.isPrimitive
         // If the output is nullable, the returned value must be unwrapped from the Option
-        && !nullable) {
+        && !nullable
+      ) {
         s"$internalTerm = ($internalTpe)$actualFuncCall;"
       } else {
         s"""$internalTerm = ($internalTpe)$retConverterTerm.apply(

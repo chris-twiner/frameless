@@ -3,10 +3,17 @@ package ops
 
 import org.apache.spark.sql.catalyst.analysis.UnresolvedAlias
 import org.apache.spark.sql.catalyst.plans.logical.Project
-import org.apache.spark.sql.{Column, Dataset, RelationalGroupedDataset}
+import org.apache.spark.sql.{ Column, Dataset, RelationalGroupedDataset }
 import shapeless._
-import shapeless.ops.hlist.{Length, Mapped, Prepend, ToList, ToTraversable, Tupler}
-import com.sparkutils.shim.expressions.{MapGroups4 => MapGroups}
+import shapeless.ops.hlist.{
+  Length,
+  Mapped,
+  Prepend,
+  ToList,
+  ToTraversable,
+  Tupler
+}
+import com.sparkutils.shim.expressions.{ MapGroups4 => MapGroups }
 import frameless.FramelessInternals
 import org.apache.spark.sql.ShimUtils.column
 import org.apache.spark.sql.classic.ClassicConversions.castToImpl

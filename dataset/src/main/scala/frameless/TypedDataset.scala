@@ -4,17 +4,34 @@ import java.util
 import frameless.functions.CatalystExplodableCollection
 import frameless.ops._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Column, DataFrame, Dataset, ShimUtils, SparkSession}
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference, Literal}
-import org.apache.spark.sql.catalyst.plans.logical.{Join, JoinHint}
+import org.apache.spark.sql.{
+  Column,
+  DataFrame,
+  Dataset,
+  ShimUtils,
+  SparkSession
+}
+import org.apache.spark.sql.catalyst.expressions.{
+  Attribute,
+  AttributeReference,
+  Literal
+}
+import org.apache.spark.sql.catalyst.plans.logical.{ Join, JoinHint }
 import org.apache.spark.sql.catalyst.plans.Inner
 import org.apache.spark.sql.ShimUtils.column
 import org.apache.spark.sql.classic.ClassicConversions.castToImpl
 import org.apache.spark.sql.types.StructType
 import shapeless._
 import shapeless.labelled.FieldType
-import shapeless.ops.hlist.{Diff, IsHCons, Mapper, Prepend, ToTraversable, Tupler}
-import shapeless.ops.record.{Keys, Modifier, Remover, Values}
+import shapeless.ops.hlist.{
+  Diff,
+  IsHCons,
+  Mapper,
+  Prepend,
+  ToTraversable,
+  Tupler
+}
+import shapeless.ops.record.{ Keys, Modifier, Remover, Values }
 
 import scala.language.experimental.macros
 import scala.reflect.ClassTag
@@ -133,9 +150,7 @@ class TypedDataset[T] protected[frameless] (
         } yield s"_${i + 1} is not null"
       ).mkString(" and ")
 
-      val selected = dataset
-        .toDF()
-        .agg(cols.head, cols.tail: _*)
+      val selected = dataset.toDF().agg(cols.head, cols.tail: _*)
 
       // spark4 really likes types correct, only select after filtering out rows
       val filtered =
@@ -151,10 +166,15 @@ class TypedDataset[T] protected[frameless] (
   }
 
   /** Returns a new [[TypedDataset]] where each record has been mapped on to the specified type. */
-  def as[U]()(implicit as: As[T, U]): TypedDataset[U] = {
+  def as[U](
+    )(implicit
+      as: As[T, U]
+    ): TypedDataset[U] = {
     implicit val uencoder = as.resultingEncoder
     val renames = as.asExpressions(dataset)
-    TypedDataset.create(dataset.select(renames: _*).as[U](TypedExpressionEncoder[U]))
+    TypedDataset.create(
+      dataset.select(renames: _*).as[U](TypedExpressionEncoder[U])
+    )
   }
 
   /**
@@ -763,7 +783,7 @@ class TypedDataset[T] protected[frameless] (
       e: TypedEncoder[(T, U)]
     ): TypedDataset[(T, U)] =
     new TypedDataset(
-      //ShimUtils.joinWith(dataset, other.dataset, column(Literal(true)), "cross")(TypedExpressionEncoder[(T, U)])
+      // ShimUtils.joinWith(dataset, other.dataset, column(Literal(true)), "cross")(TypedExpressionEncoder[(T, U)])
       self.dataset.joinWith(other.dataset, column(Literal(true)), "cross")
     )
 
@@ -779,7 +799,7 @@ class TypedDataset[T] protected[frameless] (
       to: TypedEncoder[(T, U)]
     ): TypedDataset[(Option[T], Option[U])] =
     new TypedDataset(
-      //ShimUtils.joinWith(dataset, other.dataset, condition.untyped, "full")(TypedExpressionEncoder[(T, U)])
+      // ShimUtils.joinWith(dataset, other.dataset, condition.untyped, "full")(TypedExpressionEncoder[(T, U)])
       //  .as[(Option[T], Option[U])](TypedExpressionEncoder[(Option[T], Option[U])])
       self.dataset
         .joinWith(other.dataset, condition.untyped, "full")
@@ -824,7 +844,7 @@ class TypedDataset[T] protected[frameless] (
       to: TypedEncoder[(T, U)]
     ): TypedDataset[(T, Option[U])] =
     new TypedDataset(
-      //ShimUtils.joinWith(dataset, other.dataset, condition.untyped, "left_outer")(TypedExpressionEncoder[(T, U)])
+      // ShimUtils.joinWith(dataset, other.dataset, condition.untyped, "left_outer")(TypedExpressionEncoder[(T, U)])
       //  .as[(T, Option[U])](TypedExpressionEncoder[(T, Option[U])])
       self.dataset
         .joinWith(other.dataset, condition.untyped, "left_outer")
@@ -871,9 +891,15 @@ class TypedDataset[T] protected[frameless] (
       to: TypedEncoder[(T, U)]
     ): TypedDataset[(Option[T], U)] =
     new TypedDataset(
-      ShimUtils.joinWith( self.dataset, other.dataset, condition.untyped, "right_outer")(TypedExpressionEncoder[(T, U)])
+      ShimUtils
+        .joinWith(
+          self.dataset,
+          other.dataset,
+          condition.untyped,
+          "right_outer"
+        )(TypedExpressionEncoder[(T, U)])
         .as[(Option[T], U)](TypedExpressionEncoder[(Option[T], U)])
-      /*self.dataset
+        /*self.dataset
         .joinWith(other.dataset, condition.untyped, "right_outer")
         .as[(Option[T], U)](TypedExpressionEncoder[(Option[T], U)])*/
     )
@@ -1665,6 +1691,7 @@ class TypedDataset[T] protected[frameless] (
 }
 
 object TypedDataset {
+
   def create[A](
       data: Seq[A]
     )(implicit

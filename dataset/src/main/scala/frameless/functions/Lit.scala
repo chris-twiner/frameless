@@ -1,21 +1,27 @@
 package frameless.functions
 
-import frameless.{TypedEncoder, TypedExpressionEncoder}
+import frameless.{ TypedEncoder, TypedExpressionEncoder }
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.catalyst.expressions.codegen._
-import org.apache.spark.sql.catalyst.expressions.{Expression, NonSQLExpression}
+import org.apache.spark.sql.catalyst.expressions.{
+  Expression,
+  NonSQLExpression
+}
 import org.apache.spark.sql.types.DataType
 
 // despite agnostic encoder usage Lit still requires an exact type, which would mean we already have to run an encoder before calling lit
 private[frameless] case class Lit[T](
-                                      dataType: DataType,
-                                      nullable: Boolean,
-                                      show: () => String,
-                                      catalystExpr: Expression, // must be a generated Expression from a literal TypedEncoder's toCatalyst function
-                                      responseToCatalyst: TypedEncoder[T],
-                                      responseExprEnc: ExpressionEncoder[T]
-) extends Expression with NonSQLExpression with CatalystConverter[T] with CodegenFallback {
+    dataType: DataType,
+    nullable: Boolean,
+    show: () => String,
+    catalystExpr: Expression, // must be a generated Expression from a literal TypedEncoder's toCatalyst function
+    responseToCatalyst: TypedEncoder[T],
+    responseExprEnc: ExpressionEncoder[T])
+    extends Expression
+    with NonSQLExpression
+    with CatalystConverter[T]
+    with CodegenFallback {
   override def toString: String = s"FramelessLit(${show()})"
 
   lazy val codegen = {
@@ -58,18 +64,20 @@ private[frameless] case class Lit[T](
     codegen
   }
 
-  def eval(input: InternalRow): Any = {//codegen(input) {
+  def eval(input: InternalRow): Any = { // codegen(input) {
 
-  val jvm = catalystExpr.eval(input).asInstanceOf[T]
+    val jvm = catalystExpr.eval(input).asInstanceOf[T]
 
-  processResponse(jvm)
-}
-  
+    processResponse(jvm)
+  }
+
   def children: Seq[Expression] = Nil
 
-  //protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = catalystExpr.genCode(ctx)
+  // protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = catalystExpr.genCode(ctx)
 
-  protected def withNewChildrenInternal(newChildren: IndexedSeq[Expression]): Expression = this
+  protected def withNewChildrenInternal(
+      newChildren: IndexedSeq[Expression]
+    ): Expression = this
 
   override val foldable: Boolean = catalystExpr.foldable
 }

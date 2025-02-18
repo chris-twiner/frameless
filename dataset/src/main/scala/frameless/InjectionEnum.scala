@@ -7,7 +7,9 @@ import shapeless._
 import scala.reflect.ClassTag
 
 trait InjectionEnum {
+
   object CodecEnums {
+
     /**
      * names are kept to shadow
      */
@@ -73,7 +75,7 @@ trait InjectionEnum {
 
   implicit def coproductInjectionEnum[H, T <: Coproduct](
       implicit
-      typeable: Typeable[H] ,
+      typeable: Typeable[H],
       gen: Generic.Aux[H, HNil],
       tInjectionEnum: Injection[T, String]
     ): Injection[H :+: T, String] = {

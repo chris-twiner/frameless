@@ -129,11 +129,11 @@ class CreateTests extends TypedDatasetSuite with Matchers {
           d6: Map[X1[A], X1[B]]
         ) =>
         (TypedDataset.create(Seq(d1)).collect().run().head ?= d1) &&
-          (TypedDataset.create(Seq(d2)).collect().run().head ?= d2) &&
-          (TypedDataset.create(Seq(d3)).collect().run().head ?= d3) &&
-          (TypedDataset.create(Seq(d4)).collect().run().head ?= d4) &&
-          (TypedDataset.create(Seq(d5)).collect().run().head ?= d5) &&
-          (TypedDataset.create(Seq(d6)).collect().run().head ?= d6)
+        (TypedDataset.create(Seq(d2)).collect().run().head ?= d2) &&
+        (TypedDataset.create(Seq(d3)).collect().run().head ?= d3) &&
+        (TypedDataset.create(Seq(d4)).collect().run().head ?= d4) &&
+        (TypedDataset.create(Seq(d5)).collect().run().head ?= d5) &&
+        (TypedDataset.create(Seq(d6)).collect().run().head ?= d6)
     }
 
     check(prop[String, String])

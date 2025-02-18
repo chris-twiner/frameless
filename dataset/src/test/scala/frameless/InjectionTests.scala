@@ -12,6 +12,7 @@ case object France extends Country
 case object Russia extends Country
 
 object Country {
+
   implicit val arbitrary: Arbitrary[Country] =
     Arbitrary(Arbitrary.arbitrary[Boolean].map(injection.invert))
 
@@ -25,15 +26,18 @@ case object Pasta extends Food
 case object Rice extends Food
 
 object Food {
+
   implicit val arbitrary: Arbitrary[Food] =
-    Arbitrary(Arbitrary.arbitrary[Int].map(i => injection.invert(Math.abs(i % 3))))
+    Arbitrary(
+      Arbitrary.arbitrary[Int].map(i => injection.invert(Math.abs(i % 3)))
+    )
 
   implicit val injection: Injection[Food, Int] =
     Injection(
       {
         case Burger => 0
-        case Pasta => 1
-        case Rice => 2
+        case Pasta  => 1
+        case Rice   => 2
       },
       {
         case 0 => Burger
@@ -48,10 +52,13 @@ class LocalDateTime {
   var instant: Long = _
 
   override def equals(o: Any): Boolean =
-    o.isInstanceOf[LocalDateTime] && o.asInstanceOf[LocalDateTime].instant == instant
+    o.isInstanceOf[LocalDateTime] && o
+      .asInstanceOf[LocalDateTime]
+      .instant == instant
 }
 
 object LocalDateTime {
+
   implicit val arbitrary: Arbitrary[LocalDateTime] =
     Arbitrary(Arbitrary.arbitrary[Long].map(injection.invert))
 
@@ -78,16 +85,24 @@ case class I[A](value: A)
 
 object I {
   implicit def injection[A]: Injection[I[A], A] = Injection(_.value, I(_))
-  implicit def typedEncoder[A: TypedEncoder]: TypedEncoder[I[A]] = TypedEncoder.usingInjection[I[A], A]
-  implicit def arbitrary[A: Arbitrary]: Arbitrary[I[A]] = Arbitrary(Arbitrary.arbitrary[A].map(I(_)))
+
+  implicit def typedEncoder[A: TypedEncoder]: TypedEncoder[I[A]] =
+    TypedEncoder.usingInjection[I[A], A]
+
+  implicit def arbitrary[A: Arbitrary]: Arbitrary[I[A]] =
+    Arbitrary(Arbitrary.arbitrary[A].map(I(_)))
 }
 
 case class C[A](value: A)
 
 object C {
   implicit def injection[A]: () => Codec[C[A], A] = codec(_.value, C(_))
-  implicit def typedEncoder[A: TypedEncoder]: TypedEncoder[C[A]] = TypedEncoder.usingCodec[C[A], A]
-  implicit def arbitrary[A: Arbitrary]: Arbitrary[C[A]] = Arbitrary(Arbitrary.arbitrary[A].map(C(_)))
+
+  implicit def typedEncoder[A: TypedEncoder]: TypedEncoder[C[A]] =
+    TypedEncoder.usingCodec[C[A], A]
+
+  implicit def arbitrary[A: Arbitrary]: Arbitrary[C[A]] =
+    Arbitrary(Arbitrary.arbitrary[A].map(C(_)))
 }
 
 sealed trait Employee
@@ -96,6 +111,7 @@ case object PartTime extends Employee
 case object FullTime extends Employee
 
 object Employee {
+
   implicit val arbitrary: Arbitrary[Employee] =
     Arbitrary(Gen.oneOf(Casual, PartTime, FullTime))
 }
@@ -105,6 +121,7 @@ case object Nothing extends Maybe
 case class Just(get: Int) extends Maybe
 
 sealed trait Switch
+
 object Switch {
   case object Off extends Switch
   case object On extends Switch
@@ -119,6 +136,7 @@ case class Green() extends Pixel
 case class Blue() extends Pixel
 
 object Pixel {
+
   implicit val arbitrary: Arbitrary[Pixel] =
     Arbitrary(Gen.oneOf(Red(), Green(), Blue()))
 }
@@ -128,6 +146,7 @@ case object Closed extends Connection[Nothing]
 case object Open extends Connection[Nothing]
 
 object Connection {
+
   implicit def arbitrary[A]: Arbitrary[Connection[A]] =
     Arbitrary(Gen.oneOf(Closed, Open))
 }
@@ -137,6 +156,7 @@ case object Car extends Vehicle("red")
 case object Bike extends Vehicle("blue")
 
 object Vehicle {
+
   implicit val arbitrary: Arbitrary[Vehicle] =
     Arbitrary(Gen.oneOf(Car, Bike))
 }
@@ -170,7 +190,9 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[Option[I[X1[Int]]]] _))
 
     assert(TypedEncoder[I[Int]].catalystRepr == TypedEncoder[Int].catalystRepr)
-    assert(TypedEncoder[I[I[Int]]].catalystRepr == TypedEncoder[Int].catalystRepr)
+    assert(
+      TypedEncoder[I[I[Int]]].catalystRepr == TypedEncoder[Int].catalystRepr
+    )
 
     assert(TypedEncoder[I[Option[Int]]].nullable)
   }
@@ -189,7 +211,9 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[Option[C[X1[Int]]]] _))
 
     assert(TypedEncoder[C[Int]].catalystRepr == TypedEncoder[Int].catalystRepr)
-    assert(TypedEncoder[C[C[Int]]].catalystRepr == TypedEncoder[Int].catalystRepr)
+    assert(
+      TypedEncoder[C[C[Int]]].catalystRepr == TypedEncoder[Int].catalystRepr
+    )
 
     assert(TypedEncoder[C[Option[Int]]].nullable)
   }
@@ -206,12 +230,18 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Person, Person]] _))
     check(forAll(prop[Person] _))
 
-    assert(TypedEncoder[Person].catalystRepr == TypedEncoder[(Int, String)].catalystRepr)
+    assert(
+      TypedEncoder[Person].catalystRepr == TypedEncoder[
+        (Int, String)
+      ].catalystRepr
+    )
   }
 
   test("Resolve ambiguity by importing usingDerivation") {
     import TypedEncoder.usingDerivation
-    assert(implicitly[TypedEncoder[Person]].isInstanceOf[RecordEncoder[Person, _, _]])
+    assert(
+      implicitly[TypedEncoder[Person]].isInstanceOf[RecordEncoder[Person, _, _]]
+    )
     check(forAll(prop[Person] _))
   }
 
@@ -230,7 +260,9 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Employee, Employee]] _))
     check(forAll(prop[Employee] _))
 
-    assert(TypedEncoder[Employee].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Employee].catalystRepr == TypedEncoder[String].catalystRepr
+    )
   }
 
   test("TypedEncoder[Maybe] cannot be derived") {
@@ -250,7 +282,9 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Switch, Switch]] _))
     check(forAll(prop[Switch] _))
 
-    assert(TypedEncoder[Switch].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Switch].catalystRepr == TypedEncoder[String].catalystRepr
+    )
   }
 
   test("Derive encoder for type with data constructors defined as parameterless case classes") {
@@ -261,7 +295,9 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Pixel, Pixel]] _))
     check(forAll(prop[Pixel] _))
 
-    assert(TypedEncoder[Pixel].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Pixel].catalystRepr == TypedEncoder[String].catalystRepr
+    )
   }
 
   test("Derive encoder for phantom type") {
@@ -272,7 +308,11 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Connection[Int], Connection[Int]]] _))
     check(forAll(prop[Connection[Int]] _))
 
-    assert(TypedEncoder[Connection[Int]].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Connection[Int]].catalystRepr == TypedEncoder[
+        String
+      ].catalystRepr
+    )
   }
 
   test("Derive encoder for ADT with abstract class as the base type") {
@@ -283,26 +323,36 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Vehicle, Vehicle]] _))
     check(forAll(prop[Vehicle] _))
 
-    assert(TypedEncoder[Vehicle].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Vehicle].catalystRepr == TypedEncoder[String].catalystRepr
+    )
   }
 
-  test("apply method of derived Injection instance produces the correct string") {
+  test(
+    "apply method of derived Injection instance produces the correct string"
+  ) {
     import frameless.TypedEncoder.injections._
 
     assert(implicitly[Injection[Employee, String]].apply(Casual) === "Casual")
     assert(implicitly[Injection[Switch, String]].apply(Switch.On) === "On")
     assert(implicitly[Injection[Pixel, String]].apply(Blue()) === "Blue")
-    assert(implicitly[Injection[Connection[Int], String]].apply(Open) === "Open")
+    assert(
+      implicitly[Injection[Connection[Int], String]].apply(Open) === "Open"
+    )
     assert(implicitly[Injection[Vehicle, String]].apply(Bike) === "Bike")
   }
 
-  test("invert method of derived Injection instance produces the correct value") {
+  test(
+    "invert method of derived Injection instance produces the correct value"
+  ) {
     import frameless.TypedEncoder.injections._
 
     assert(implicitly[Injection[Employee, String]].invert("Casual") === Casual)
     assert(implicitly[Injection[Switch, String]].invert("On") === Switch.On)
     assert(implicitly[Injection[Pixel, String]].invert("Blue") === Blue())
-    assert(implicitly[Injection[Connection[Int], String]].invert("Open") === Open)
+    assert(
+      implicitly[Injection[Connection[Int], String]].invert("Open") === Open
+    )
     assert(implicitly[Injection[Vehicle, String]].invert("Bike") === Bike)
   }
 
@@ -321,7 +371,6 @@ class InjectionTests extends TypedDatasetSuite {
     )
   }
 
-
   test("Resolve missing implicit by deriving Codec instance") {
     import frameless.TypedEncoder.injections.CodecEnums._
 
@@ -330,7 +379,9 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Employee, Employee]] _))
     check(forAll(prop[Employee] _))
 
-    assert(TypedEncoder[Employee].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Employee].catalystRepr == TypedEncoder[String].catalystRepr
+    )
   }
 
   test("TypedEncoder[Maybe] cannot be derived by using Codec") {
@@ -350,7 +401,9 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Switch, Switch]] _))
     check(forAll(prop[Switch] _))
 
-    assert(TypedEncoder[Switch].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Switch].catalystRepr == TypedEncoder[String].catalystRepr
+    )
   }
 
   test("Derive encoder for type with data constructors defined as parameterless case classes using Codec") {
@@ -361,7 +414,9 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Pixel, Pixel]] _))
     check(forAll(prop[Pixel] _))
 
-    assert(TypedEncoder[Pixel].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Pixel].catalystRepr == TypedEncoder[String].catalystRepr
+    )
   }
 
   test("Derive encoder for phantom type using Codec") {
@@ -372,10 +427,16 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Connection[Int], Connection[Int]]] _))
     check(forAll(prop[Connection[Int]] _))
 
-    assert(TypedEncoder[Connection[Int]].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Connection[Int]].catalystRepr == TypedEncoder[
+        String
+      ].catalystRepr
+    )
   }
 
-  test("Derive encoder for ADT with abstract class as the base type using Codecs") {
+  test(
+    "Derive encoder for ADT with abstract class as the base type using Codecs"
+  ) {
     import frameless.TypedEncoder.injections.CodecEnums._
 
     check(forAll(prop[X1[Vehicle]] _))
@@ -383,26 +444,42 @@ class InjectionTests extends TypedDatasetSuite {
     check(forAll(prop[X2[Vehicle, Vehicle]] _))
     check(forAll(prop[Vehicle] _))
 
-    assert(TypedEncoder[Vehicle].catalystRepr == TypedEncoder[String].catalystRepr)
+    assert(
+      TypedEncoder[Vehicle].catalystRepr == TypedEncoder[String].catalystRepr
+    )
   }
 
   test("apply method of derived Injection instance produces the correct string using Codecs") {
     import frameless.TypedEncoder.injections.CodecEnums._
 
-    assert(implicitly[TypedInjection[Employee, String]].encode(Casual) === "Casual")
-    assert(implicitly[TypedInjection[Switch, String]].encode(Switch.On) === "On")
+    assert(
+      implicitly[TypedInjection[Employee, String]].encode(Casual) === "Casual"
+    )
+    assert(
+      implicitly[TypedInjection[Switch, String]].encode(Switch.On) === "On"
+    )
     assert(implicitly[TypedInjection[Pixel, String]].encode(Blue()) === "Blue")
-    assert(implicitly[TypedInjection[Connection[Int], String]].encode(Open) === "Open")
+    assert(
+      implicitly[TypedInjection[Connection[Int], String]]
+        .encode(Open) === "Open"
+    )
     assert(implicitly[TypedInjection[Vehicle, String]].encode(Bike) === "Bike")
   }
 
   test("invert method of derived Injection instance produces the correct value using Codecs") {
     import frameless.TypedEncoder.injections.CodecEnums._
 
-    assert(implicitly[TypedInjection[Employee, String]].decode("Casual") === Casual)
-    assert(implicitly[TypedInjection[Switch, String]].decode("On") === Switch.On)
+    assert(
+      implicitly[TypedInjection[Employee, String]].decode("Casual") === Casual
+    )
+    assert(
+      implicitly[TypedInjection[Switch, String]].decode("On") === Switch.On
+    )
     assert(implicitly[TypedInjection[Pixel, String]].decode("Blue") === Blue())
-    assert(implicitly[TypedInjection[Connection[Int], String]].decode("Open") === Open)
+    assert(
+      implicitly[TypedInjection[Connection[Int], String]]
+        .decode("Open") === Open
+    )
     assert(implicitly[TypedInjection[Vehicle, String]].decode("Bike") === Bike)
   }
 

@@ -1,8 +1,18 @@
 package frameless
 
 import org.apache.spark.sql.Encoder
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, IterableEncoder, PrimitiveIntEncoder, ProductEncoder, TransformingEncoder}
-import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, AgnosticEncoders, Codec}
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{
+  EncoderField,
+  IterableEncoder,
+  PrimitiveIntEncoder,
+  ProductEncoder,
+  TransformingEncoder
+}
+import org.apache.spark.sql.catalyst.encoders.{
+  AgnosticEncoder,
+  AgnosticEncoders,
+  Codec
+}
 import org.apache.spark.sql.types.Metadata
 import org.scalacheck.Prop
 import org.scalacheck.Prop._
@@ -12,14 +22,15 @@ import scala.reflect.ClassTag
 
 class AsTests extends TypedDatasetSuite {
   test("as[X2[A, B]]") {
-    def prop[A, B](data: Vector[(A, B)])(
-      implicit
-      eab: TypedEncoder[(A, B)],
-      ex2: TypedEncoder[X2[A, B]]
-    ): Prop = {
+    def prop[A, B](
+        data: Vector[(A, B)]
+      )(implicit
+        eab: TypedEncoder[(A, B)],
+        ex2: TypedEncoder[X2[A, B]]
+      ): Prop = {
       val dataset = TypedDataset.create(data)
 
-      val dataset2 = dataset.as[X2[A,B]]().collect().run().toVector
+      val dataset2 = dataset.as[X2[A, B]]().collect().run().toVector
       val data2 = data.map { case (a, b) => X2(a, b) }
 
       dataset2 ?= data2
@@ -34,17 +45,16 @@ class AsTests extends TypedDatasetSuite {
   }
 
   test("as[X2[X2[A, B], C]") {
-    def prop[A, B, C](data: Vector[(A, B, C)])(
-      implicit
-      eab: TypedEncoder[((A, B), C)],
-      ex2: TypedEncoder[X2[X2[A, B], C]]
-    ): Prop = {
-      val data2 = data.map {
-        case (a, b, c) => ((a, b), c)
-      }
+    def prop[A, B, C](
+        data: Vector[(A, B, C)]
+      )(implicit
+        eab: TypedEncoder[((A, B), C)],
+        ex2: TypedEncoder[X2[X2[A, B], C]]
+      ): Prop = {
+      val data2 = data.map { case (a, b, c) => ((a, b), c) }
       val dataset = TypedDataset.create(data2)
 
-      val dataset2 = dataset.as[X2[X2[A,B], C]]().collect().run().toVector
+      val dataset2 = dataset.as[X2[X2[A, B], C]]().collect().run().toVector
       val data3 = data2.map { case ((a, b), c) => X2(X2(a, b), c) }
 
       dataset2 ?= data3
@@ -56,7 +66,13 @@ class AsTests extends TypedDatasetSuite {
     check(forAll(prop[Long, Int, String] _))
     // both below fail as, although the derived types are correct for the cast, Spark is adding nullable to array
     // and longs, this stops the casts.
-    check(forAll(prop[Seq[Seq[Option[Seq[Long]]]], Seq[Int], Option[Seq[Option[Int]]]] _))
-    check(forAll(prop[Seq[Option[Seq[String]]], Seq[Int], Seq[Option[String]]] _))
+    check(
+      forAll(
+        prop[Seq[Seq[Option[Seq[Long]]]], Seq[Int], Option[Seq[Option[Int]]]] _
+      )
+    )
+    check(
+      forAll(prop[Seq[Option[Seq[String]]], Seq[Int], Seq[Option[String]]] _)
+    )
   }
 }

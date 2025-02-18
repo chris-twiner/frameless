@@ -1,11 +1,14 @@
 package frameless
 package functions
 
-import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoders, ExpressionEncoder}
+import org.apache.spark.sql.catalyst.encoders.{
+  AgnosticEncoders,
+  ExpressionEncoder
+}
 import org.scalacheck.Prop
 import org.scalacheck.Prop._
 
-import scala.collection.immutable.{ListSet, TreeSet}
+import scala.collection.immutable.{ ListSet, TreeSet }
 
 class UdfTests extends TypedDatasetSuite {
 
@@ -94,7 +97,7 @@ class UdfTests extends TypedDatasetSuite {
 
         (dataset21 ?= d) && (dataset22 ?= d)
       }
-/*
+      /*
       val typedEncoder = implicitly[TypedEncoder[X3U[Int, String, Boolean]]]
 
       val enc = ExpressionEncoder(typedEncoder.agnosticEncoder).resolveAndBind()
@@ -102,7 +105,7 @@ class UdfTests extends TypedDatasetSuite {
       val a = X3U(1, "2", (), true)
       val to = enc.createSerializer().apply(a)
       val from = enc.createDeserializer().apply(to)
-*/
+       */
       println("")
 
       check(forAll(prop[Int, Int, Int] _))

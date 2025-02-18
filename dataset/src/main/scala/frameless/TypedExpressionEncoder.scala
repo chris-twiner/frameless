@@ -7,7 +7,7 @@ object TypedExpressionEncoder {
 
   /**
    * As of Spark 4 TypedExpressionEncoder is simply an alias for AgnosticEncoder
-  */
+   */
   type TypedExpressionEncoder[A] = AgnosticEncoder[A]
 
   /**
@@ -23,5 +23,5 @@ object TypedExpressionEncoder {
   def apply[T](
       implicit
       encoder: TypedEncoder[T]
-    ): TypedExpressionEncoder[T] =encoder.agnosticEncoder
+    ): TypedExpressionEncoder[T] = encoder.agnosticEncoder
 }
