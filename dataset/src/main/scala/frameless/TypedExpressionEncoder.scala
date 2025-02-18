@@ -1,14 +1,9 @@
 package frameless
 
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoder
+import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.types.StructType
 
 object TypedExpressionEncoder {
-
-  /**
-   * As of Spark 4 TypedExpressionEncoder is simply an alias for AgnosticEncoder
-   */
-  type TypedExpressionEncoder[A] = AgnosticEncoder[A]
 
   /**
    * In Spark, DataFrame has always schema of StructType
@@ -23,5 +18,6 @@ object TypedExpressionEncoder {
   def apply[T](
       implicit
       encoder: TypedEncoder[T]
-    ): TypedExpressionEncoder[T] = encoder.agnosticEncoder
+    ): Encoder[T] = encoder.agnosticEncoder
+
 }
