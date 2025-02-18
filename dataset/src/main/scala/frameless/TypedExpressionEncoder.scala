@@ -25,5 +25,3 @@ object TypedExpressionEncoder {
       encoder: TypedEncoder[T]
     ): TypedExpressionEncoder[T] =encoder.agnosticEncoder
 }
-
-private case class SparkValueClass[A](a: A)
