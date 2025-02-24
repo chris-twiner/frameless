@@ -15,6 +15,14 @@ object TypedExpressionEncoder {
     org.apache.spark.sql.ShimUtils
       .targetStructType(encoder.catalystRepr, encoder.nullable)
 
+  /**
+   * As of Spark 4 this no longer returns an ExpressionEncoder, instead returning an AgnosticEncoder.
+   * Any code wishing to wrap this knowledge can use ShimUtils.expressionEncoder
+   *
+   * @param encoder
+   * @tparam T
+   * @return
+   */
   def apply[T](
       implicit
       encoder: TypedEncoder[T]
