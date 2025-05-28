@@ -36,7 +36,7 @@ object FramelessInternals {
       }
   }
 
-  def expr(column: Column): Expression = column.expr
+  def expr(column: Column): Expression = ShimUtils.expression(column)
 
   def logicalPlan(ds: Dataset[_]): LogicalPlan = shimUtils.logicalPlan(ds)
 
@@ -67,7 +67,7 @@ object FramelessInternals {
       plan: LogicalPlan,
       encoder: Encoder[T]
     ): Dataset[T] =
-    new Dataset(sqlContext, plan, encoder)
+    ShimUtils.mkDataset(sqlContext, plan, encoder)
 
   def ofRows(sparkSession: SparkSession, logicalPlan: LogicalPlan): DataFrame =
     shimUtils.ofRows(sparkSession, logicalPlan)

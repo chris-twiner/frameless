@@ -4,26 +4,15 @@ import java.util
 import frameless.functions.CatalystExplodableCollection
 import frameless.ops._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{ Column, DataFrame, Dataset, SparkSession }
-import org.apache.spark.sql.catalyst.expressions.{
-  Attribute,
-  AttributeReference,
-  Literal
-}
-import org.apache.spark.sql.catalyst.plans.logical.{ Join, JoinHint }
+import org.apache.spark.sql.{Column, DataFrame, Dataset, ShimUtils, SparkSession}
+import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference, Literal}
+import org.apache.spark.sql.catalyst.plans.logical.{Join, JoinHint}
 import org.apache.spark.sql.catalyst.plans.Inner
 import org.apache.spark.sql.types.StructType
 import shapeless._
 import shapeless.labelled.FieldType
-import shapeless.ops.hlist.{
-  Diff,
-  IsHCons,
-  Mapper,
-  Prepend,
-  ToTraversable,
-  Tupler
-}
-import shapeless.ops.record.{ Keys, Modifier, Remover, Values }
+import shapeless.ops.hlist.{Diff, IsHCons, Mapper, Prepend, ToTraversable, Tupler}
+import shapeless.ops.record.{Keys, Modifier, Remover, Values}
 
 import scala.language.experimental.macros
 
@@ -130,7 +119,7 @@ class TypedDataset[T] protected[frameless] (
       val underlyingColumns = columns.toList[UntypedExpression[T]]
       val cols: Seq[Column] = for {
         (c, i) <- columns.toList[UntypedExpression[T]].zipWithIndex
-      } yield new Column(c.expr).as(s"_${i + 1}")
+      } yield ShimUtils.column(c.expr).as(s"_${i + 1}")
 
       // Workaround to SPARK-20346. One alternative is to allow the result to be Vector(null) for empty DataFrames.
       // Another one would be to return an Option.
@@ -766,7 +755,7 @@ class TypedDataset[T] protected[frameless] (
       e: TypedEncoder[(T, U)]
     ): TypedDataset[(T, U)] =
     new TypedDataset(
-      self.dataset.joinWith(other.dataset, new Column(Literal(true)), "cross")
+      self.dataset.joinWith(other.dataset, ShimUtils.column(Literal(true)), "cross")
     )
 
   /**
@@ -806,7 +795,7 @@ class TypedDataset[T] protected[frameless] (
     )
     val joinedPlan = joinPlan(dataset, join, leftPlan, rightPlan)
     val joinedDs =
-      mkDataset(dataset.sqlContext, joinedPlan, TypedExpressionEncoder[(T, U)])
+      mkDataset(ShimUtils.context(dataset), joinedPlan, TypedExpressionEncoder[(T, U)])
 
     TypedDataset.create[(T, U)](joinedDs)
   }
@@ -1217,7 +1206,7 @@ class TypedDataset[T] protected[frameless] (
       val base = dataset
         .toDF()
         .select(
-          columns.toList[UntypedExpression[T]].map(c => new Column(c.expr)): _*
+          columns.toList[UntypedExpression[T]].map(c => ShimUtils.column(c.expr)): _*
         )
       val selected = base.as[Out](TypedExpressionEncoder[Out])
 

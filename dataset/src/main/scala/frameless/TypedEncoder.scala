@@ -34,7 +34,7 @@ import org.apache.spark.sql.shim.{
   Invoke5 => Invoke
 }
 
-import scala.collection.immutable.{ ListSet, TreeSet }
+import scala.collection.immutable.{ ListSet, TreeSet, Seq }
 
 abstract class TypedEncoder[T](
     implicit

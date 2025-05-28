@@ -1,12 +1,11 @@
 package frameless
 
 import java.util
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.streaming.DataStreamWriter
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, DataFrameWriter, SQLContext, SparkSession}
+import org.apache.spark.sql.{DataFrame, DataFrameWriter, SQLContext, ShimUtils, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
 import scala.util.Random
@@ -34,7 +33,7 @@ trait TypedDatasetForwarded[T] { self: TypedDataset[T] =>
     * Returns a `SQLContext` from this [[TypedDataset]].
     */
   def sqlContext: SQLContext =
-    dataset.sqlContext
+    ShimUtils.context(dataset)
 
   /**
     * Returns the schema of this Dataset.

@@ -3,17 +3,10 @@ package ops
 
 import org.apache.spark.sql.catalyst.analysis.UnresolvedAlias
 import org.apache.spark.sql.catalyst.plans.logical.Project
-import org.apache.spark.sql.{ Column, Dataset, RelationalGroupedDataset }
+import org.apache.spark.sql.{Column, Dataset, RelationalGroupedDataset, ShimUtils}
 import shapeless._
-import shapeless.ops.hlist.{
-  Length,
-  Mapped,
-  Prepend,
-  ToList,
-  ToTraversable,
-  Tupler
-}
-import com.sparkutils.shim.expressions.{ MapGroups4 => MapGroups }
+import shapeless.ops.hlist.{Length, Mapped, Prepend, ToList, ToTraversable, Tupler}
+import com.sparkutils.shim.expressions.{MapGroups4 => MapGroups}
 import frameless.FramelessInternals
 
 class GroupedByManyOps[T, TK <: HList, K <: HList, KT](
@@ -216,7 +209,7 @@ private[ops] abstract class AggregatingOps[T, TK <: HList, K <: HList, KT](
       i7: TypedEncoder[Out1],
       i8: ToTraversable.Aux[TC, List, UntypedExpression[T]]
     ): TypedDataset[Out1] = {
-    def expr(c: UntypedExpression[T]): Column = new Column(c.expr)
+    def expr(c: UntypedExpression[T]): Column = ShimUtils.column(c.expr)
 
     val groupByExprs = groupedBy.toList[UntypedExpression[T]].map(expr)
     val aggregates =
@@ -274,7 +267,7 @@ private[ops] abstract class AggregatingOps[T, TK <: HList, K <: HList, KT](
       )
 
       val groupedAndFlatMapped = FramelessInternals.mkDataset(
-        self.dataset.sqlContext,
+        self.sqlContext,
         mapGroups,
         TypedExpressionEncoder[U]
       )
@@ -284,7 +277,7 @@ private[ops] abstract class AggregatingOps[T, TK <: HList, K <: HList, KT](
   }
 
   private def retainGroupColumns: Boolean = {
-    self.dataset.sqlContext
+    self.sqlContext
       .getConf("spark.sql.retainGroupColumns", "true")
       .toBoolean
   }
@@ -345,7 +338,7 @@ final case class Pivot[T, GroupedColumns <: HList, PivotType, Values <: HList](
         }
 
       val aggCols: Seq[Column] = mapAny(aggrColumns)(x =>
-        new Column(x.asInstanceOf[TypedAggregate[_, _]].expr)
+        ShimUtils.column(x.asInstanceOf[TypedAggregate[_, _]].expr)
       )
       val tmp = ds.dataset
         .toDF()

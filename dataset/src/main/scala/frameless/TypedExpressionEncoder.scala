@@ -23,9 +23,9 @@ object TypedExpressionEncoder {
     org.apache.spark.sql.ShimUtils.expressionEncoder[T](
       jvmRepr,
       nullable,
-      toCatalyst,
+      toCatalyst _,
       catalystRepr,
-      fromCatalyst
+      fromCatalyst _
     )
   }
 
