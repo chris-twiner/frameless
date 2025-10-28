@@ -91,7 +91,7 @@ class RefinedFieldEncoderTests extends TypedDatasetSuite with Matchers {
 
     val expected = Seq(bs, B(2, None))
 
-    unsafeDs.collect().run() shouldBe expected
+    unsafeDs.collect().run().toArray shouldBe expected.toArray
 
     // Check safe
     val safeDs = TypedDataset.create(expected)
