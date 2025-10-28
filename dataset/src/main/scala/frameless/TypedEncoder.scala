@@ -527,7 +527,6 @@ object TypedEncoder {
       i1: DropUnitValues.Aux[G, H],
       i2: IsHCons[H],
       i3: Lazy[RecordEncoderFields[H]],
-      i4: Lazy[NewInstanceExprs[G]],
       i5: ClassTag[F]
     ): TypedEncoder[F] = new RecordEncoder[F, G, H]
 

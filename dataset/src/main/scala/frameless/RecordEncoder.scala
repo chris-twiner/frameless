@@ -1,23 +1,13 @@
 package frameless
 
-import com.sparkutils.shim.expressions.{
-  CreateNamedStruct1 => CreateNamedStruct,
-  GetStructField3 => GetStructField,
-  UnwrapOption2 => UnwrapOption,
-  WrapOption2 => WrapOption
-}
-import com.sparkutils.shim.{ deriveUnitLiteral, ifIsNull }
+import com.sparkutils.shim.deriveUnitLiteral
 import org.apache.spark.sql.catalyst.encoders.{ AgnosticEncoder, Codec }
 import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{
   EncoderField,
   ProductEncoder,
   TransformingEncoder
 }
-import org.apache.spark.sql.catalyst.expressions.{ Expression, Literal }
-import org.apache.spark.sql.shim.{
-  Invoke5 => Invoke,
-  NewInstance4 => NewInstance
-}
+import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.types._
 import shapeless._
 import shapeless.labelled.FieldType
@@ -78,44 +68,6 @@ object RecordEncoderFields {
 }
 
 /**
- * Assists the generation of constructor call parameters from a labelled generic representation.
- * As Unit typed fields were removed earlier, we need to put back unit literals in the  appropriate positions.
- *
- * @tparam T labelled generic representation of type fields
- */
-trait NewInstanceExprs[T <: HList] extends Serializable {
-  def from(exprs: List[Expression]): Seq[Expression]
-}
-
-object NewInstanceExprs {
-
-  implicit def deriveHNil: NewInstanceExprs[HNil] = new NewInstanceExprs[HNil] {
-    def from(exprs: List[Expression]): Seq[Expression] = Nil
-  }
-
-  implicit def deriveUnit[K <: Symbol, T <: HList](
-      implicit
-      tail: NewInstanceExprs[T]
-    ): NewInstanceExprs[FieldType[K, Unit] :: T] =
-    new NewInstanceExprs[FieldType[K, Unit] :: T] {
-
-      def from(exprs: List[Expression]): Seq[Expression] =
-        deriveUnitLiteral +: tail.from(exprs)
-    }
-
-  implicit def deriveNonUnit[K <: Symbol, V, T <: HList](
-      implicit
-      notUnit: V =:!= Unit,
-      tail: NewInstanceExprs[T]
-    ): NewInstanceExprs[FieldType[K, V] :: T] =
-    new NewInstanceExprs[FieldType[K, V] :: T] {
-
-      def from(exprs: List[Expression]): Seq[Expression] =
-        exprs.head +: tail.from(exprs.tail)
-    }
-}
-
-/**
  * Drops fields with Unit type from labelled generic representation of types.
  *
  * @tparam L labelled generic representation of type fields
@@ -164,7 +116,6 @@ class RecordEncoder[F, G <: HList, H <: HList](
     i1: DropUnitValues.Aux[G, H],
     i2: IsHCons[H],
     fields: Lazy[RecordEncoderFields[H]],
-    newInstanceExprs: Lazy[NewInstanceExprs[G]],
     classTag: ClassTag[F])
     extends TypedEncoder[F] {
 

@@ -1,31 +1,25 @@
 val sparkVersion =
 //  "3.5.1" //
- "4.1.0-SNAPSHOT" // must have the apache_snaps configured 4.1.0-SNAPSHOT
-val spark34Version = "3.4.2"
-val spark33Version = "3.3.4"
+ "4.0.1" // must have the apache_snaps configured 4.1.0-SNAPSHOT
 val catsCoreVersion = "2.10.0"
 val catsEffectVersion = "3.5.3"
 val catsMtlVersion = "1.4.0"
-val scalatest = "3.2.18"
-val scalatestplus = "3.1.0.0-RC2"
+val scalatest = "3.2.19"
+val scalatestplus = "scalacheck-1-18"
+val scalatestplusVersion = "3.2.19.0"
 val shapeless = "2.3.10"
-val scalacheck = "1.17.0"
+val scalacheck = "1.18.0"
 val scalacheckEffect = "1.0.4"
 val refinedVersion = "0.11.1"
 val nakedFSVersion = "0.1.0"
-val shimVersion = "0.0.2-SNAPSHOT"
+val shimVersion = "0.3.0-baseline2-SNAPSHOT"
 
-val Scala212 = "2.12.19"
-val Scala213 = "2.13.13"
+val Scala213 = "2.13.16"
 
 resolvers in Global += Resolver.mavenLocal
 resolvers in Global += MavenRepository(
-  "sonatype-s01-snapshots",
-  Resolver.SonatypeS01RepositoryRoot + "/snapshots"
-)
-resolvers in Global += MavenRepository(
-  "sonatype-s01-releases",
-  Resolver.SonatypeS01RepositoryRoot + "/releases"
+  "central-snapshots",
+  "https://central.sonatype.com/repository/maven-snapshots"
 )
 resolvers in Global += MavenRepository(
   "apache_snaps",
@@ -39,9 +33,9 @@ csrConfiguration := csrConfiguration.value
   .withTtl(Some(1.minute))
   .withCachePolicies(Vector(CachePolicy.LocalOnly))
 
-ThisBuild / tlBaseVersion := "0.16"
+ThisBuild / tlBaseVersion := "2.0"
 
-ThisBuild / crossScalaVersions := Seq(Scala213, Scala212)
+ThisBuild / crossScalaVersions := Seq(Scala213)
 ThisBuild / scalaVersion := Scala213
 
 lazy val root = project
@@ -49,38 +43,14 @@ lazy val root = project
   .enablePlugins(NoPublishPlugin)
   .settings(crossScalaVersions := Nil)
   .aggregate(
-    `root-spark35`,
-    `root-spark34`,
-    `root-spark33`,
+    `root-spark4`,
     docs
   )
 
-lazy val `root-spark35` = project
-  .in(file(".spark35"))
+lazy val `root-spark4` = project
+  .in(file(".spark4"))
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, cats, dataset, refined, ml)
-
-lazy val `root-spark34` = project
-  .in(file(".spark34"))
-  .enablePlugins(NoPublishPlugin)
-  .aggregate(
-    core,
-    `cats-spark34`,
-    `dataset-spark34`,
-    `refined-spark34`,
-    `ml-spark34`
-  )
-
-lazy val `root-spark33` = project
-  .in(file(".spark33"))
-  .enablePlugins(NoPublishPlugin)
-  .aggregate(
-    core,
-    `cats-spark33`,
-    `dataset-spark33`,
-    `refined-spark33`,
-    `ml-spark33`
-  )
 
 lazy val core =
   project.settings(name := "frameless-core").settings(framelessSettings)
@@ -89,24 +59,6 @@ lazy val cats = project
   .settings(name := "frameless-cats")
   .settings(catsSettings)
   .dependsOn(dataset % "test->test;compile->compile;provided->provided")
-
-lazy val `cats-spark34` = project
-  .settings(name := "frameless-cats-spark34")
-  .settings(sourceDirectory := (cats / sourceDirectory).value)
-  .settings(catsSettings)
-  .settings(spark34Settings)
-  .dependsOn(
-    `dataset-spark34` % "test->test;compile->compile;provided->provided"
-  )
-
-lazy val `cats-spark33` = project
-  .settings(name := "frameless-cats-spark33")
-  .settings(sourceDirectory := (cats / sourceDirectory).value)
-  .settings(catsSettings)
-  .settings(spark33Settings)
-  .dependsOn(
-    `dataset-spark33` % "test->test;compile->compile;provided->provided"
-  )
 
 lazy val dataset = project
   .settings(name := "frameless-dataset")
@@ -120,56 +72,10 @@ lazy val dataset = project
   .settings(sparkDependencies(sparkVersion))
   .dependsOn(core % "test->test;compile->compile")
 
-lazy val `dataset-spark34` = project
-  .settings(name := "frameless-dataset-spark34")
-  .settings(sourceDirectory := (dataset / sourceDirectory).value)
-  .settings(
-    Test / unmanagedSourceDirectories += (dataset / baseDirectory).value / "src" / "test" / "spark-3.3+"
-  )
-  .settings(
-    libraryDependencies += "com.sparkutils" %% "shim_runtime_3.4.1.oss_3.4" % shimVersion changing ()
-  )
-  .settings(datasetSettings)
-  .settings(sparkDependencies(spark34Version))
-  .settings(spark34Settings)
-  .dependsOn(core % "test->test;compile->compile")
-
-lazy val `dataset-spark33` = project
-  .settings(name := "frameless-dataset-spark33")
-  .settings(sourceDirectory := (dataset / sourceDirectory).value)
-  .settings(
-    Test / unmanagedSourceDirectories += (dataset / baseDirectory).value / "src" / "test" / "spark-3.3+"
-  )
-  .settings(
-    libraryDependencies += "com.sparkutils" %% "shim_runtime_3.3.2.oss_3.3" % shimVersion changing ()
-  )
-  .settings(datasetSettings)
-  .settings(sparkDependencies(spark33Version))
-  .settings(spark33Settings)
-  .dependsOn(core % "test->test;compile->compile")
-
 lazy val refined = project
   .settings(name := "frameless-refined")
   .settings(refinedSettings)
   .dependsOn(dataset % "test->test;compile->compile;provided->provided")
-
-lazy val `refined-spark34` = project
-  .settings(name := "frameless-refined-spark34")
-  .settings(sourceDirectory := (refined / sourceDirectory).value)
-  .settings(refinedSettings)
-  .settings(spark34Settings)
-  .dependsOn(
-    `dataset-spark34` % "test->test;compile->compile;provided->provided"
-  )
-
-lazy val `refined-spark33` = project
-  .settings(name := "frameless-refined-spark33")
-  .settings(sourceDirectory := (refined / sourceDirectory).value)
-  .settings(refinedSettings)
-  .settings(spark33Settings)
-  .dependsOn(
-    `dataset-spark33` % "test->test;compile->compile;provided->provided"
-  )
 
 lazy val ml = project
   .settings(name := "frameless-ml")
@@ -178,28 +84,6 @@ lazy val ml = project
   .dependsOn(
     core % "test->test;compile->compile",
     dataset % "test->test;compile->compile;provided->provided"
-  )
-
-lazy val `ml-spark34` = project
-  .settings(name := "frameless-ml-spark34")
-  .settings(sourceDirectory := (ml / sourceDirectory).value)
-  .settings(mlSettings)
-  .settings(sparkMlDependencies(spark34Version))
-  .settings(spark34Settings)
-  .dependsOn(
-    core % "test->test;compile->compile",
-    `dataset-spark33` % "test->test;compile->compile;provided->provided"
-  )
-
-lazy val `ml-spark33` = project
-  .settings(name := "frameless-ml-spark33")
-  .settings(sourceDirectory := (ml / sourceDirectory).value)
-  .settings(mlSettings)
-  .settings(sparkMlDependencies(spark33Version))
-  .settings(spark33Settings)
-  .dependsOn(
-    core % "test->test;compile->compile",
-    `dataset-spark33` % "test->test;compile->compile;provided->provided"
   )
 
 lazy val docs = project
@@ -359,10 +243,31 @@ lazy val framelessSettings = Seq(
   libraryDependencies ++= Seq(
     "com.chuusai" %% "shapeless" % shapeless,
     "org.scalatest" %% "scalatest" % scalatest % Test,
-    "org.scalatestplus" %% "scalatestplus-scalacheck" % scalatestplus % Test,
+    "org.scalatestplus" %% scalatestplus % scalatestplusVersion % Test,
     "org.scalacheck" %% "scalacheck" % scalacheck % Test
   ),
-  Test / javaOptions ++= Seq("-Xmx1G", "-ea"),
+  Test / javaOptions ++= {
+    val baseOptions = Seq("-Xmx1G", "-ea")
+    val java17Options =
+      if (sys.props("java.specification.version").toDouble >= 17.0) {
+        Seq(
+          "--add-opens=java.base/java.lang=ALL-UNNAMED",
+          "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+          "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+          "--add-opens=java.base/java.io=ALL-UNNAMED",
+          "--add-opens=java.base/java.net=ALL-UNNAMED",
+          "--add-opens=java.base/java.nio=ALL-UNNAMED",
+          "--add-opens=java.base/java.util=ALL-UNNAMED",
+          "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+          "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+          "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+          "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
+          "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
+          "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED"
+        )
+      } else Seq.empty
+    baseOptions ++ java17Options
+  },
   Test / fork := true,
   Test / parallelExecution := false,
   mimaPreviousArtifacts ~= {
@@ -386,26 +291,6 @@ lazy val framelessSettings = Seq(
   Test / publishArtifact := true,
   Test / packageDoc / publishArtifact := false
 ) ++ consoleSettings
-
-lazy val spark34Settings = Seq[Setting[_]](
-  tlVersionIntroduced := Map("2.12" -> "0.14.1", "2.13" -> "0.14.1"),
-  mimaPreviousArtifacts := Set(
-    organization.value %% moduleName.value
-      .split("-")
-      .dropRight(1)
-      .mkString("-") % "0.14.1"
-  )
-)
-
-lazy val spark33Settings = Seq[Setting[_]](
-  tlVersionIntroduced := Map("2.12" -> "0.13.0", "2.13" -> "0.13.0"),
-  mimaPreviousArtifacts := Set(
-    organization.value %% moduleName.value
-      .split("-")
-      .dropRight(1)
-      .mkString("-") % "0.14.0"
-  )
-)
 
 lazy val consoleSettings = Seq(
   Compile / console / scalacOptions ~= {
