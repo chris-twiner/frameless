@@ -25,32 +25,6 @@ private[refined] trait RefinedFieldEncoders {
       new TypedEncoder[Option[F[T, R]]] {
         override def jvmRepr = ObjectType(classOf[Option[F[T, R]]])
         override def agnosticEncoder: AgnosticEncoder[Option[F[T, R]]] = OptionEncoder(refined.encoder.agnosticEncoder)
-
-        /*def nullable = true
-
-        // `Refined` is a Value class: https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala-3.0-/eu/timepit/refined/api/Refined.scala#L8
-        def jvmRepr = ObjectType(classOf[Option[F[T, R]]])
-
-        def catalystRepr: DataType = i1.catalystRepr
-
-        val innerJvmRepr = ObjectType(i2.runtimeClass)
-
-        def fromCatalyst(path: Expression): Expression = {
-          val javaValue = i1.fromCatalyst(path)
-          val value = NewInstance(i2.runtimeClass, Seq(javaValue), innerJvmRepr)
-
-          WrapOption(value, innerJvmRepr)
-        }
-
-        @inline def toCatalyst(path: Expression): Expression = {
-          val value = UnwrapOption(innerJvmRepr, path)
-
-          val javaValue = Invoke(value, "value", i1.jvmRepr, Nil)
-
-          i1.toCatalyst(javaValue)
-        }
-
-        override def toString = s"optionRefined[${i2.runtimeClass.getName}]"*/
       })
 
   /**
@@ -66,22 +40,6 @@ private[refined] trait RefinedFieldEncoders {
      new TypedEncoder[F[T, R]] {
        override def jvmRepr: DataType = i1.jvmRepr
        override def agnosticEncoder: AgnosticEncoder[F[T, R]] =
-       // ugly, prev impl forwards as well
          i1.agnosticEncoder.asInstanceOf[AgnosticEncoder[F[T, R]]]
-      /*def nullable = i1.nullable
-
-      // `Refined` is a Value class: https://github.com/fthomas/refined/blob/master/modules/core/shared/src/main/scala-3.0-/eu/timepit/refined/api/Refined.scala#L8
-      def jvmRepr = i1.jvmRepr
-
-      def catalystRepr: DataType = i1.catalystRepr
-
-      def fromCatalyst(path: Expression): Expression =
-        i1.fromCatalyst(path)
-
-      @inline def toCatalyst(path: Expression): Expression =
-        i1.toCatalyst(path)
-
-      override def toString = s"refined[${i2.runtimeClass.getName}]"*/
-
      })
 }

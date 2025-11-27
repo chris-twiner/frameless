@@ -1,5 +1,0 @@
-package frameless
-
-class PositionalConverter {
-
-}

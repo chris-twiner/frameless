@@ -1,13 +1,10 @@
 package frameless
 
-import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec, JavaSerializationCodec, KryoSerializationCodecImpl}
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, ProductEncoder, TransformingEncoder}
-import org.apache.spark.sql.types.{Metadata, StructType}
-
-import scala.reflect.ClassTag
+import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.types.StructType
 
 object TypedExpressionEncoder {
-
+  
   /**
    * In Spark, DataFrame has always schema of StructType
    *
@@ -21,6 +18,7 @@ object TypedExpressionEncoder {
   def apply[T](
       implicit
       encoder: TypedEncoder[T]
+<<<<<<< HEAD
     ): AgnosticEncoder[T] = {
 
     import encoder.classTag
@@ -44,7 +42,8 @@ object TypedExpressionEncoder {
     } else */
       encoder.agnosticEncoder
   }
+=======
+    ): Encoder[T] = encoder.agnosticEncoder
+>>>>>>> d3167fbfbd9284a1b17ec6d34481773446cd4dad
 
 }
-
-private case class SparkValueClass[A](a: A)
