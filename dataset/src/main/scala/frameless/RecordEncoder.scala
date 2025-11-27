@@ -1,11 +1,10 @@
 package frameless
 
-import com.sparkutils.shim.expressions.{CreateNamedStruct1 => CreateNamedStruct, GetStructField3 => GetStructField, UnwrapOption2 => UnwrapOption, WrapOption2 => WrapOption}
-import com.sparkutils.shim.{deriveUnitLiteral, ifIsNull}
+import com.sparkutils.shim.deriveUnitLiteral
+import frameless.FramelessInternals.transforming
 import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, ProductEncoder, TransformingEncoder}
-import org.apache.spark.sql.catalyst.expressions.{Expression, Literal}
-import org.apache.spark.sql.shim.{Invoke5 => Invoke, NewInstance4 => NewInstance}
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, ProductEncoder}
+import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.types._
 import shapeless._
 import shapeless.labelled.FieldType
@@ -227,7 +226,7 @@ object RecordFieldEncoder extends RecordFieldEncoderLowPriority {
     override def nullable: Boolean = i5.nullable
     override def agnosticEncoder: AgnosticEncoder[F] = {
 
-      TransformingEncoder[F,V](i6,
+      transforming[F,V](i6,
         i5.agnosticEncoder,
         () => new Codec[F, V] {
           override def encode(in: F): V = Generic[F].to(in).head

@@ -1,25 +1,26 @@
 package frameless
 
-import com.sparkutils.shim.expressions.{
-  Alias2 => Alias,
-  CreateStruct1 => CreateStruct
-}
-import org.apache.spark.sql.shim.{ utils => shimUtils }
+import com.sparkutils.shim.expressions.{Alias2 => Alias, CreateStruct1 => CreateStruct}
+import org.apache.spark.sql.shim.{utils => shimUtils}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.codegen._
-import org.apache.spark.sql.catalyst.expressions.{
-  Expression,
-  NamedExpression,
-  NonSQLExpression
-}
-import org.apache.spark.sql.catalyst.plans.logical.{ LogicalPlan, Project }
+import org.apache.spark.sql.catalyst.expressions.{Expression, NamedExpression, NonSQLExpression}
+import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.types._
 import org.apache.spark.sql._
+import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.TransformingEncoder
+import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, Codec}
 
 import scala.reflect.ClassTag
 
 object FramelessInternals {
+
+  def transforming[I, O](
+    clsTag: ClassTag[I],
+    transformed: AgnosticEncoder[O],
+    codecProvider: () => Codec[_ >: I, O]): TransformingEncoder[I, O] =
+    TransformingEncoder(clsTag, transformed, codecProvider, transformed.nullable)
 
   def objectTypeFor[A](
       implicit

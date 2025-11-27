@@ -24,7 +24,7 @@ object TypedExpressionEncoder {
     ): AgnosticEncoder[T] = {
 
     import encoder.classTag
-
+/*
     // spark special cases option as a top return value
     // it cannot cascade this through agnostic encoders up from nested encoders
     // a simple way to verify if we have a need for option is if the top encoder is itself nullable
@@ -41,7 +41,7 @@ object TypedExpressionEncoder {
           override def decode(out: SparkValueClass[T]): T = out.a
         }
       )
-    } else
+    } else */
       encoder.agnosticEncoder
   }
 

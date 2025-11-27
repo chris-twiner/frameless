@@ -1,6 +1,6 @@
 package frameless
 
-import frameless.FramelessInternals.UserDefinedType
+import frameless.FramelessInternals.{UserDefinedType, transforming}
 import frameless.InjectionCodecs.codec
 import frameless.{reflection => ScalaReflection}
 import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders._
@@ -50,7 +50,7 @@ abstract class TypedInjection[A,B](encoderName: String)(
   override def catalystRepr: DataType = trb.catalystRepr
 
   override def agnosticEncoder: AgnosticEncoder[A] =
-    TransformingEncoder[A, B](
+    transforming[A, B](
       classTag,
       trb.agnosticEncoder,
       codecProvider)
@@ -147,7 +147,7 @@ object TypedEncoder {
       FramelessInternals.objectTypeFor[java.lang.Character]
 
     override def agnosticEncoder: AgnosticEncoder[Char] =
-      TransformingEncoder[java.lang.Character, String](
+      transforming[java.lang.Character, String](
         implicitly[ClassTag[java.lang.Character]],
         StringEncoder,
         charAsString).asInstanceOf[AgnosticEncoder[Char]] // same types but code gen needs exact
@@ -201,7 +201,7 @@ object TypedEncoder {
     override def jvmRepr: DataType = ScalaReflection.dataTypeFor[SQLDate]
 
     override def agnosticEncoder: AgnosticEncoder[SQLDate] =
-      TransformingEncoder[SQLDate, Int](
+      transforming[SQLDate, Int](
         classTag,
         PrimitiveIntEncoder,
         codec(_.days, SQLDate))
@@ -222,7 +222,7 @@ object TypedEncoder {
     override def jvmRepr: DataType = ScalaReflection.dataTypeFor[Date]
 
     override def agnosticEncoder: AgnosticEncoder[Date] =
-      TransformingEncoder[Date, Instant](
+      transforming[Date, Instant](
         classTag,
         STRICT_INSTANT_ENCODER,
         codec(_.toInstant, Date.from))
@@ -246,7 +246,7 @@ object TypedEncoder {
           out => SQLTimestamp(instantToMicros(out.toInstant)))
 
       override def agnosticEncoder: AgnosticEncoder[SQLTimestamp] =
-        TransformingEncoder[SQLTimestamp, java.sql.Timestamp](
+        transforming[SQLTimestamp, java.sql.Timestamp](
           classTag,
           TimestampEncoder(true),
           sqlTimestampAsLong
@@ -395,7 +395,7 @@ object TypedEncoder {
     override def jvmRepr: DataType = FramelessInternals.objectTypeFor[C[T]](i1)
 
     override def agnosticEncoder: AgnosticEncoder[C[T]] =
-      TransformingEncoder(
+      transforming(
         classTag,
         IterableEncoder(
           i3,

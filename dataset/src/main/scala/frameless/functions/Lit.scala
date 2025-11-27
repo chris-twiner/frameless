@@ -7,6 +7,7 @@ import org.apache.spark.sql.catalyst.expressions.codegen._
 import org.apache.spark.sql.catalyst.expressions.{Expression, NonSQLExpression}
 import org.apache.spark.sql.types.DataType
 
+// despite agnostic encoder usage Lit still requires an exact type, which would mean we already have to run an encoder before calling lit
 private[frameless] case class Lit[T](
                                       dataType: DataType,
                                       nullable: Boolean,

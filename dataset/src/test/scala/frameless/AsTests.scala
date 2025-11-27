@@ -1,14 +1,7 @@
 package frameless
 
-import org.apache.spark.sql.Encoder
-import org.apache.spark.sql.catalyst.encoders.AgnosticEncoders.{EncoderField, IterableEncoder, PrimitiveIntEncoder, ProductEncoder, TransformingEncoder}
-import org.apache.spark.sql.catalyst.encoders.{AgnosticEncoder, AgnosticEncoders, Codec}
-import org.apache.spark.sql.types.Metadata
 import org.scalacheck.Prop
 import org.scalacheck.Prop._
-import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
-
-import scala.reflect.ClassTag
 
 class AsTests extends TypedDatasetSuite {
   test("as[X2[A, B]]") {
